@@ -117,16 +117,36 @@ class Player(object):
     elif isinstance(b, Block):
       b.taken(self.stack[-1] if self.stack else self)
       self.stack.append(b)
+    elif isinstance(b, Corruption):
+      self.say('Bad sector.')
     self.phase = self.steptime
+
+  def say(self, msg):
+    game.add(Tip(msg, x = self.sprite.x, y = self.sprite.y + 20))
+
+
+class Tip(object):
+  def __init__(self, msg, ttl = 2, **kwargs):
+    kwargs.setdefault('font_size', 12)
+    self.s = story(u'“' + msg + u'”', **kwargs)
+    self.y0 = self.s.y
+    self.t0 = game.time
+    self.ttl = ttl
+
+  def draw(self):
+    self.s.draw()
+
+  def think(self, dt):
+    self.s.y = int(self.y0 + 300 * (game.time - self.t0) ** 4)
+    if self.t0 + self.ttl < game.time:
+      game.objs.remove(self)
 
 
 class Corruption(object):
   walkable = True
 
   def __init__(self, i, j):
-    self.sprite = sprite('images/block.png')
-    self.sprite.color = (0, 0, 0)
-    self.sprite.scale = 1.2
+    self.sprite = sprite('images/corruption.png')
     self.i = i
     self.j = j
     self.sprite.x = toX(i)
@@ -230,10 +250,14 @@ class Game(object):
     self.add(Block(6, 6))
     self.add(Block(7, 7))
     self.add(label('Fragmented Space', x = 0, y = 250))
+    self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
+    self.time = 0
+    self.t0 = self.time
     self.add(story('A game of my life on a platter', x = 0, y = 190))
     pyglet.gl.glClearColor(255, 255, 255, 255)
     @window.event
     def on_draw():
+      self.timeremaining.text = '{:.1f}'.format(100 + self.t0 - self.time)
       window.clear()
       pyglet.gl.glLoadIdentity()
       pyglet.gl.glTranslatef(window.width / 2, window.height / 2, 0)
@@ -246,6 +270,7 @@ class Game(object):
         self.fullscreen = not self.fullscreen
         window.set_fullscreen(self.fullscreen)
     def update(dt):
+      self.time += dt
       for o in self.objs[:]:
         o.think(dt)
     pyglet.clock.schedule_interval(update, 1.0 / 70)

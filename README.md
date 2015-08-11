@@ -29,7 +29,7 @@ This game uses Python and Pyglet.
 RUNNING THE GAME
 ----------------
 
-Find the Mac and Windows executables at http://pyweek.org/e/fragmented-space/
+Find the Mac and Windows executables at http://pyweek.org/e/fragmentedspace/
 
 Or get the source from https://github.com/darabos/pyweek-fragmented-space/ and run:
 
