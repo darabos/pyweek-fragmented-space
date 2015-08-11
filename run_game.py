@@ -25,9 +25,14 @@ def sprite(f):
   image = pyglet.resource.image(f)
   sprite = pyglet.sprite.Sprite(image)
   sprite.think = lambda dt: None
+  image.anchor_x = image.width / 2
+  image.anchor_y = image.height / 2
   return sprite
 
-GRID = 30
+def toX(i):
+  return (i - 4.5) * 30
+def toY(j):
+  return (j - 4.5) * 30
 
 class Player(object):
   idling = sprite('images/player-idling.png')
@@ -45,7 +50,7 @@ class Player(object):
     self.oj = 0
     self.phase = 0
     self.stack = []
-    self.z = -self.j
+    self.move(0, 0)
 
   def draw(self):
     self.sprite.draw()
@@ -87,14 +92,15 @@ class Player(object):
 
     p = self.phase / self.steptime
     p = 1 - (p - 1) * (p - 1) # Ease.
-    self.sprite.x = (p * self.oi + (1 - p) * self.i) * GRID
-    self.sprite.y = (p * self.oj + (1 - p) * self.j) * GRID
+    self.sprite.x = toX(p * self.oi + (1 - p) * self.i)
+    self.sprite.y = toY(p * self.oj + (1 - p) * self.j)
 
   def move(self, di, dj):
-    if game.grid(self.i + di, self.j + dj) == 'free':
+    b = game.grid(self.i + di, self.j + dj)
+    if b == 'free' or getattr(b, 'walkable', False):
       self.i += di
       self.j += dj
-      self.z = -self.j
+      self.z = -self.j + 10
     else:
       # Bounce back.
       self.oi += di * 0.2
@@ -114,13 +120,47 @@ class Player(object):
     self.phase = self.steptime
 
 
+class Corruption(object):
+  walkable = True
+
+  def __init__(self, i, j):
+    self.sprite = sprite('images/block.png')
+    self.sprite.color = (0, 0, 0)
+    self.sprite.scale = 1.2
+    self.i = i
+    self.j = j
+    self.sprite.x = toX(i)
+    self.sprite.y = toY(j)
+    self.z = -j - 0.1
+    self.primed = False
+
+  def draw(self):
+    self.sprite.draw()
+
+  def think(self, dt):
+    if not self.primed and game.grid(self.i, self.j) != self:
+      self.primed = True
+    if self.primed and game.grid(self.i, self.j) == self:
+      neighbors = [
+        (self.i + 1, self.j),
+        (self.i - 1, self.j),
+        (self.i, self.j + 1),
+        (self.i, self.j - 1),
+        ]
+      cs = [(c.i, c.j) for c in game.objs if isinstance(c, Corruption)]
+      for (i, j) in set(neighbors) - set(cs):
+        if 0 <= i < 10 and 0 <= j < 10:
+          game.add(Corruption(i, j))
+      self.primed = False
+
+
 class Block(object):
   def __init__(self, i, j):
     self.sprite = sprite('images/block.png')
     self.i = i
     self.j = j
-    self.sprite.x = i * GRID
-    self.sprite.y = j * GRID
+    self.sprite.x = toX(i)
+    self.sprite.y = toY(j)
     self.z = -j
     self.carrier = None
     self.vx = 0
@@ -146,8 +186,8 @@ class Block(object):
       self.sprite.scale = 0.8
       self.z = self.carrier.z + 0.1
     else:
-      dx = int(self.i * GRID - self.sprite.x)
-      dy = int(self.j * GRID - self.sprite.y)
+      dx = int(toX(self.i) - self.sprite.x)
+      dy = int(toY(self.j) - self.sprite.y)
       self.sprite.scale = 1
     # TODO: make dt-dependent
     self.vx *= 0.6
@@ -169,27 +209,34 @@ class Game(object):
   def grid(self, i, j):
     if 0 <= i < 10 and 0 <= j < 10:
       for o in self.objs:
+        if hasattr(o, 'j') and isinstance(o, Block) and o.i == i and o.j == j:
+          return o # Return block if present.
+      for o in self.objs:
         if hasattr(o, 'j') and o.i == i and o.j == j:
-          return o
+          return o # Look at non-blocks as second preference.
       return 'free'
     else:
       return 'wall'
 
   def run(self):
-    window = pyglet.window.Window(width = 800, height = 600)
+    window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     self.player = self.add(Player())
+    window.set_icon(self.player.sprite.image)
     self.add(Block(4, 4))
+    self.add(Corruption(4, 4))
     self.add(Block(5, 5))
     self.add(Block(6, 6))
     self.add(Block(7, 7))
-    self.add(label('Fragmented Space', x = window.width / 2, y = window.height / 2))
-    self.add(story('A game of my life on a platter', x = window.width / 2, y = window.height / 2 - 60))
+    self.add(label('Fragmented Space', x = 0, y = 250))
+    self.add(story('A game of my life on a platter', x = 0, y = 190))
     pyglet.gl.glClearColor(255, 255, 255, 255)
     @window.event
     def on_draw():
       window.clear()
+      pyglet.gl.glLoadIdentity()
+      pyglet.gl.glTranslatef(window.width / 2, window.height / 2, 0)
       self.objs.sort(key=lambda o: o.z if hasattr(o, 'z') else 100)
       for o in self.objs:
         o.draw()
