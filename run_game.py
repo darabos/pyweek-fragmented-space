@@ -197,6 +197,8 @@ class Corruption(object):
 class Block(object):
   def __init__(self, i, j):
     self.sprite = sprite('images/block.png')
+    self.index = len(game.objs)
+    self.label = label(str(self.index), font_size = 10)
     self.i = i
     self.j = j
     self.sprite.x = toX(i)
@@ -208,6 +210,9 @@ class Block(object):
 
   def draw(self):
     self.sprite.draw()
+    self.label.x = int(self.sprite.x)
+    self.label.y = int(self.sprite.y)
+    self.label.draw()
 
   def taken(self, carrier):
     del self.j # Re from grid.
