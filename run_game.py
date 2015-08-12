@@ -201,8 +201,10 @@ class Corruption(object):
 class Block(object):
   def __init__(self, i, j, color, index):
     self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
+    self.sprite = self.inside
     self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
     self.inside.color = color
+    self.color = color
     self.index = index
     self.i = i
     self.j = j
@@ -240,12 +242,12 @@ class Block(object):
 
   def think(self, dt):
     if self.carrier:
-      dx = int(self.carrier.sprite.x - self.inside.x)
-      dy = int(self.carrier.sprite.y - self.inside.y + 10)
+      dx = int(self.carrier.sprite.x - self.sprite.x)
+      dy = int(self.carrier.sprite.y - self.sprite.y + 10)
       self.z = self.carrier.z + 0.1
     else:
-      dx = int(toX(self.i) - self.inside.x)
-      dy = int(toY(self.j) - self.inside.y)
+      dx = int(toX(self.i) - self.sprite.x)
+      dy = int(toY(self.j) - self.sprite.y)
     # TODO: make dt-dependent
     self.vx *= 0.6
     self.vy *= 0.6
@@ -338,15 +340,8 @@ class Game(object):
     self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
-    self.player = self.add(Player(0, 0))
-    window.set_icon(self.player.sprite.image)
-    for i in range(10):
-      for j in range(10):
-        if i != 5 and j != 2:
-          self.add(Corruption(i, j))
-        if i != 0 and j != 5:
-          self.add(Block(i, j, (20 * i, 0, 0), j))
-    self.add(Virus(4, 5))
+    window.set_icon(pyglet.resource.image('images/player-lifting.png'))
+    self.makelevel()
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.t0 = self.time
@@ -375,6 +370,40 @@ class Game(object):
     pyglet.clock.schedule_interval(update, 1.0 / 70)
     window.push_handlers(self.keys)
     pyglet.app.run()
+
+  def makelevel(self):
+    self.objs = []
+    self.player = self.add(Player(0, 0))
+    def hx(x):
+      return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
+    colors = [
+      hx(0xfff6d5),
+      hx(0x99ff55),
+      hx(0xff2a2a),
+      hx(0xff6600),
+      hx(0xc8c4b7),
+      hx(0xafdde9),
+      hx(0x5599ff),
+      hx(0xeeaaff),
+      hx(0xff2ad4),
+      hx(0xffff00),
+      ]
+    counts = {}
+    total = 0
+    for i in range(10):
+      for j in range(10):
+        if i == 0 and j == 0:
+          continue
+        if random.random() < 0.02:
+          self.add(Corruption(i, j))
+        if total < colors * 10 and random.random() < 0.7:
+          color = random.choice(colors)
+          while counts.get(color) == 10:
+            color = random.choice(colors)
+          counts[color] = counts.get(color, 0) + 1
+          self.add(Block(i, j, color, counts[color] - 1))
+          total += 1
+    self.add(Virus(4, 5))
 
 if __name__ == '__main__':
   game = Game()
