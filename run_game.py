@@ -392,7 +392,7 @@ class Game(object):
     total = 0
     for i in range(10):
       for j in range(10):
-        if i == 0 and j == 0:
+        if i == 0 and j == 0 or i == 5 and j == 5:
           continue
         if random.random() < 0.02:
           self.add(Corruption(i, j))
@@ -403,7 +403,7 @@ class Game(object):
           counts[color] = counts.get(color, 0) + 1
           self.add(Block(i, j, color, counts[color] - 1))
           total += 1
-    self.add(Virus(4, 5))
+    self.add(Virus(5, 5))
 
 if __name__ == '__main__':
   game = Game()
