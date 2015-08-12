@@ -1,4 +1,5 @@
 # coding=utf-8
+import collections
 import random
 import pyglet
 from pyglet.window import key
@@ -22,9 +23,9 @@ def story(text, **kwargs):
   kwargs.setdefault('font_size', 18)
   return label(text, **kwargs)
 
-def sprite(f):
+def sprite(f, **kwargs):
   image = pyglet.resource.image(f)
-  sprite = pyglet.sprite.Sprite(image)
+  sprite = pyglet.sprite.Sprite(image, **kwargs)
   sprite.think = lambda dt: None
   image.anchor_x = image.width / 2
   image.anchor_y = image.height / 2
@@ -37,15 +38,16 @@ def toY(j):
 
 class Player(object):
   walkable = True
-  idling = sprite('images/player-idling.png')
-  movingleft = sprite('images/player-left.png')
-  movingright = sprite('images/player-right.png')
-  movingup = sprite('images/player-up.png')
-  movingdown = sprite('images/player-down.png')
-  lifting = sprite('images/player-lifting.png')
-  hurting = sprite('images/player-lifting.png')
 
   def __init__(self, i, j):
+    self.idling = sprite('images/player-idling.png')
+    self.movingleft = sprite('images/player-left.png')
+    self.movingright = sprite('images/player-right.png')
+    self.movingup = sprite('images/player-up.png')
+    self.movingdown = sprite('images/player-down.png')
+    self.lifting = sprite('images/player-lifting.png')
+    self.hurting = sprite('images/player-lifting.png')
+
     self.sprite = self.idling
     self.i = i
     self.j = j
@@ -120,9 +122,11 @@ class Player(object):
     elif isinstance(b, Block):
       b.taken(self.stack[-1] if self.stack else self)
       self.stack.append(b)
+    elif not self.stack:
+      return
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
-    elif isinstance(b, Virus) and self.stack:
+    elif isinstance(b, Virus):
       self.say('Squish.')
       game.objs.remove(b)
       b = self.stack.pop()
@@ -166,7 +170,7 @@ class Corruption(object):
   walkable = True
 
   def __init__(self, i, j):
-    self.sprite = sprite('images/corruption.png')
+    self.sprite = sprite('images/corruption.png', batch = game.layers['corruption'])
     self.i = i
     self.j = j
     self.sprite.x = toX(i)
@@ -175,7 +179,7 @@ class Corruption(object):
     self.primed = False
 
   def draw(self):
-    self.sprite.draw()
+    pass
 
   def think(self, dt):
     if not self.primed and isinstance(game.grid(self.i, self.j), Block):
@@ -195,52 +199,62 @@ class Corruption(object):
 
 
 class Block(object):
-  def __init__(self, i, j):
-    self.sprite = sprite('images/block.png')
-    self.index = len(game.objs)
-    self.label = label(str(self.index), font_size = 10)
+  def __init__(self, i, j, color, index):
+    self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
+    self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
+    self.inside.color = color
+    self.index = index
     self.i = i
     self.j = j
-    self.sprite.x = toX(i)
-    self.sprite.y = toY(j)
+    self.inside.x = toX(i)
+    self.inside.y = toY(j)
+    self.outside.x = toX(i)
+    self.outside.y = toY(j)
     self.z = -j
     self.carrier = None
     self.vx = 0
     self.vy = 0
 
   def draw(self):
-    self.sprite.draw()
-    self.label.x = int(self.sprite.x)
-    self.label.y = int(self.sprite.y)
-    self.label.draw()
+    if self.carrier:
+      self.inside.draw()
+      self.outside.draw()
 
   def taken(self, carrier):
-    del self.j # Re from grid.
+    del self.j # Remove from grid.
     self.carrier = carrier
+    self.inside.batch = None
+    self.outside.batch = None
+    self.inside.scale = 0.8
+    self.outside.scale = 0.8
 
   def dropped(self, i, j):
     self.i = i
     self.j = j
     self.carrier = None
     self.z = -self.j
+    self.inside.batch = game.layers['blocks-inside']
+    self.outside.batch = game.layers['blocks-outside']
+    self.inside.scale = 1
+    self.outside.scale = 1
 
   def think(self, dt):
     if self.carrier:
-      dx = int(self.carrier.sprite.x - self.sprite.x)
-      dy = int(self.carrier.sprite.y - self.sprite.y + 10)
-      self.sprite.scale = 0.8
+      dx = int(self.carrier.sprite.x - self.inside.x)
+      dy = int(self.carrier.sprite.y - self.inside.y + 10)
       self.z = self.carrier.z + 0.1
     else:
-      dx = int(toX(self.i) - self.sprite.x)
-      dy = int(toY(self.j) - self.sprite.y)
-      self.sprite.scale = 1
+      dx = int(toX(self.i) - self.inside.x)
+      dy = int(toY(self.j) - self.inside.y)
     # TODO: make dt-dependent
     self.vx *= 0.6
     self.vy *= 0.6
     self.vx += 0.3 * dx
     self.vy += 0.3 * dy
-    self.sprite.x += self.vx
-    self.sprite.y += self.vy
+    self.inside.x += self.vx
+    self.inside.y += self.vy
+    self.outside.x += self.vx
+    self.outside.y += self.vy
 
 
 class Virus(object):
@@ -321,15 +335,17 @@ class Game(object):
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
+    self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     self.player = self.add(Player(0, 0))
     window.set_icon(self.player.sprite.image)
-    self.add(Block(4, 4))
-    self.add(Corruption(4, 4))
-    self.add(Block(5, 5))
-    self.add(Block(4, 6))
-    self.add(Block(3, 5))
+    for i in range(10):
+      for j in range(10):
+        if i != 5 and j != 2:
+          self.add(Corruption(i, j))
+        if i != 0 and j != 5:
+          self.add(Block(i, j, (20 * i, 0, 0), j))
     self.add(Virus(4, 5))
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
@@ -342,6 +358,8 @@ class Game(object):
       window.clear()
       pyglet.gl.glLoadIdentity()
       pyglet.gl.glTranslatef(window.width / 2, window.height / 2, 0)
+      for l in ['corruption', 'markings', 'blocks-inside', 'blocks-outside']:
+        self.layers[l].draw()
       self.objs.sort(key=lambda o: o.z if hasattr(o, 'z') else 100)
       for o in self.objs:
         o.draw()
