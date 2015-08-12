@@ -36,12 +36,14 @@ def toY(j):
   return (j - 4.5) * 30
 
 class Player(object):
+  walkable = True
   idling = sprite('images/player-idling.png')
   movingleft = sprite('images/player-left.png')
   movingright = sprite('images/player-right.png')
   movingup = sprite('images/player-up.png')
   movingdown = sprite('images/player-down.png')
   lifting = sprite('images/player-lifting.png')
+  hurting = sprite('images/player-lifting.png')
 
   def __init__(self, i, j):
     self.sprite = self.idling
@@ -120,12 +122,24 @@ class Player(object):
       self.stack.append(b)
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
-    elif isinstance(b, Virus):
+    elif isinstance(b, Virus) and self.stack:
       self.say('Squish.')
       game.objs.remove(b)
       b = self.stack.pop()
       b.dropped(i, j)
     self.phase = self.steptime
+
+  def hurt(self):
+    self.say(random.choice(['Ah', 'Ouch', 'Oops', 'Eep']))
+    self.sprite = self.hurting
+    for b in self.stack:
+      game.objs.remove(b)
+    self.stack = []
+    self.oi = self.i
+    self.oj = self.j
+    self.sprite.x = toX(self.i)
+    self.sprite.y = toY(self.j)
+    self.phase = self.steptime * 2
 
   def say(self, msg):
     game.add(Tip(msg, x = self.sprite.x, y = self.sprite.y + 20))
@@ -164,7 +178,7 @@ class Corruption(object):
     self.sprite.draw()
 
   def think(self, dt):
-    if not self.primed and game.grid(self.i, self.j) != self:
+    if not self.primed and isinstance(game.grid(self.i, self.j), Block):
       self.primed = True
     if self.primed and game.grid(self.i, self.j) == self:
       neighbors = [
@@ -196,7 +210,7 @@ class Block(object):
     self.sprite.draw()
 
   def taken(self, carrier):
-    del self.j # Remove from grid.
+    del self.j # Re from grid.
     self.carrier = carrier
 
   def dropped(self, i, j):
@@ -225,6 +239,7 @@ class Block(object):
 
 
 class Virus(object):
+  walkable = True
 
   def __init__(self, i, j):
     self.sprite = sprite('images/virus.png')
@@ -246,6 +261,9 @@ class Virus(object):
         self.phase = 0
         self.oi = self.i
         self.oj = self.j
+        for b in game.allgrid(self.i, self.j):
+          if isinstance(b, Player):
+            b.hurt()
     if self.phase == 0:
       dirs = [d for d in [(0, 1), (0, -1), (-1, 0), (1, 0)] if self.canmove(*d)]
       if dirs:
@@ -260,7 +278,8 @@ class Virus(object):
     self.sprite.y += 10 * (1 - p * p)
 
   def canmove(self, di, dj):
-    return game.grid(self.i + di, self.j + dj) == 'free'
+    b = game.grid(self.i + di, self.j + dj)
+    return b == 'free' or getattr(b, 'walkable', False)
 
   def move(self, di, dj):
     self.i += di
@@ -276,15 +295,21 @@ class Game(object):
     self.objs.append(o)
     return o
 
+  def allgrid(self, i, j):
+    matches = []
+    for o in self.objs:
+      if hasattr(o, 'j') and o.i == i and o.j == j:
+        matches.append(o)
+    return matches
+
   def grid(self, i, j):
     if 0 <= i < 10 and 0 <= j < 10:
-      for o in self.objs:
-        if hasattr(o, 'j') and isinstance(o, Block) and o.i == i and o.j == j:
-          return o # Return block if present.
-      for o in self.objs:
-        if hasattr(o, 'j') and o.i == i and o.j == j:
-          return o # Look at non-blocks as second preference.
-      return 'free'
+      matches = self.allgrid(i, j)
+      if not matches:
+        return 'free'
+      order = [Block]
+      matches.sort(key = lambda o: order.index(o.__class__) if o.__class__ in order else -1)
+      return matches[-1]
     else:
       return 'wall'
 
