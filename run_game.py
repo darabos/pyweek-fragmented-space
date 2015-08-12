@@ -1,4 +1,5 @@
 # coding=utf-8
+import random
 import pyglet
 from pyglet.window import key
 
@@ -42,12 +43,12 @@ class Player(object):
   movingdown = sprite('images/player-down.png')
   lifting = sprite('images/player-lifting.png')
 
-  def __init__(self):
+  def __init__(self, i, j):
     self.sprite = self.idling
-    self.i = 0
-    self.j = 0
-    self.oi = 0
-    self.oj = 0
+    self.i = i
+    self.j = j
+    self.oi = i
+    self.oj = j
     self.phase = 0
     self.stack = []
     self.move(0, 0)
@@ -218,6 +219,50 @@ class Block(object):
     self.sprite.y += self.vy
 
 
+class Virus(object):
+
+  def __init__(self, i, j):
+    self.sprite = sprite('images/virus.png')
+    self.i = i
+    self.j = j
+    self.oi = i
+    self.oj = j
+    self.phase = 0
+    self.move(0, 0)
+
+  def draw(self):
+    self.sprite.draw()
+
+  steptime = 0.25
+  def think(self, dt):
+    if self.phase > 0:
+      self.phase -= dt
+      if self.phase <= 0:
+        self.phase = 0
+        self.oi = self.i
+        self.oj = self.j
+    if self.phase == 0:
+      dirs = [d for d in [(0, 1), (0, -1), (-1, 0), (1, 0)] if self.canmove(*d)]
+      if dirs:
+        d = random.choice(dirs)
+        self.move(*d)
+      self.phase = self.steptime
+
+    p = self.phase / self.steptime
+    self.sprite.x = toX(p * self.oi + (1 - p) * self.i)
+    self.sprite.y = toY(p * self.oj + (1 - p) * self.j)
+    p = p * 2 - 1
+    self.sprite.y += 10 * (1 - p * p)
+
+  def canmove(self, di, dj):
+    return game.grid(self.i + di, self.j + dj) == 'free'
+
+  def move(self, di, dj):
+    self.i += di
+    self.j += dj
+    self.z = -self.j + 10
+
+
 class Game(object):
   def __init__(self):
     self.objs = []
@@ -242,13 +287,14 @@ class Game(object):
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
-    self.player = self.add(Player())
+    self.player = self.add(Player(0, 0))
     window.set_icon(self.player.sprite.image)
     self.add(Block(4, 4))
     self.add(Corruption(4, 4))
     self.add(Block(5, 5))
-    self.add(Block(6, 6))
-    self.add(Block(7, 7))
+    self.add(Block(4, 6))
+    self.add(Block(3, 5))
+    self.add(Virus(4, 5))
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.time = 0
