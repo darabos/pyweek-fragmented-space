@@ -9,9 +9,9 @@ def label(text, **kwargs):
   kwargs.setdefault('font_size', 36)
   kwargs.setdefault('anchor_x', 'center')
   kwargs.setdefault('anchor_y', 'center')
+  kwargs.setdefault('color', (0, 0, 0, 255))
   label = pyglet.text.Label(
     text,
-    color=(0, 0, 0, 255),
     **kwargs)
   label.think = lambda dt: None
   return label
@@ -120,6 +120,11 @@ class Player(object):
       self.stack.append(b)
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
+    elif isinstance(b, Virus):
+      self.say('Squish.')
+      game.objs.remove(b)
+      b = self.stack.pop()
+      b.dropped(i, j)
     self.phase = self.steptime
 
   def say(self, msg):
@@ -128,17 +133,17 @@ class Player(object):
 
 class Tip(object):
   def __init__(self, msg, ttl = 2, **kwargs):
-    kwargs.setdefault('font_size', 12)
-    self.s = story(u'“' + msg + u'”', **kwargs)
-    self.y0 = self.s.y
+    kwargs.setdefault('font_size', 10)
+    self.label = label(msg, **kwargs)
+    self.y0 = self.label.y
     self.t0 = game.time
     self.ttl = ttl
 
   def draw(self):
-    self.s.draw()
+    self.label.draw()
 
   def think(self, dt):
-    self.s.y = int(self.y0 + 300 * (game.time - self.t0) ** 4)
+    self.label.y = int(self.y0 + 300 * (game.time - self.t0) ** 4)
     if self.t0 + self.ttl < game.time:
       game.objs.remove(self)
 
@@ -284,6 +289,7 @@ class Game(object):
       return 'wall'
 
   def run(self):
+    self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
@@ -297,7 +303,6 @@ class Game(object):
     self.add(Virus(4, 5))
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
-    self.time = 0
     self.t0 = self.time
     self.add(story('A game of my life on a platter', x = 0, y = 190))
     pyglet.gl.glClearColor(255, 255, 255, 255)
