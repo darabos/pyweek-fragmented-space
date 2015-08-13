@@ -377,6 +377,13 @@ class Game(object):
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
+    abilities = [
+      ('flight', 'Flight Simulator assembled!', 'Tap SPACE to lift off or land.'),
+      ('push', 'Sokoban assembled!', 'Walk into blocks to push them.'),
+      ('fixer', 'Disk Doctor assembled!', 'Stand still on bad sectors to fix them.'),
+      ('carry', 'Ram Disk assembled!', 'Carry any number of blocks.'),
+      ('killer', 'Antivirus assembled!', 'Drop a block on a virus to kill it.'),
+    ]
     colors = [
       hx(0x5599ff), # blue
       hx(0xff2a2a), # red
