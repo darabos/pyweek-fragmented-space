@@ -34,7 +34,7 @@ def sprite(f, **kwargs):
 def toX(i):
   return (i - 4.5) * 30
 def toY(j):
-  return (j - 4.5) * 30
+  return (4.5 - j) * 30
 
 class Player(object):
   walkable = True
@@ -74,9 +74,9 @@ class Player(object):
       if game.keys[key.SPACE]:
         self.sprite = self.lifting
         if game.keys[key.UP]:
-          self.lift(0, 1)
-        elif game.keys[key.DOWN]:
           self.lift(0, -1)
+        elif game.keys[key.DOWN]:
+          self.lift(0, 1)
         elif game.keys[key.LEFT]:
           self.lift(-1, 0)
         elif game.keys[key.RIGHT]:
@@ -85,10 +85,10 @@ class Player(object):
         self.sprite = self.idling
         if game.keys[key.UP]:
           self.sprite = self.movingup
-          self.move(0, 1)
+          self.move(0, -1)
         elif game.keys[key.DOWN]:
           self.sprite = self.movingdown
-          self.move(0, -1)
+          self.move(0, 1)
         elif game.keys[key.LEFT]:
           self.sprite = self.movingleft
           self.move(-1, 0)
@@ -200,12 +200,12 @@ class Corruption(object):
 
 
 class Block(object):
-  def __init__(self, i, j, color, index):
+  def __init__(self, i, j, file, index):
     self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
     self.sprite = self.inside
     self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
-    self.inside.color = color
-    self.color = color
+    self.inside.color = file.color
+    self.file = file
     self.index = index
     self.i = i
     self.j = j
@@ -240,6 +240,22 @@ class Block(object):
     self.outside.batch = game.layers['blocks-outside']
     self.inside.scale = 1
     self.outside.scale = 1
+    if not self.file.awarded:
+      # Check if the file is complete.
+      p = 10 * j + i - self.index
+      i, j = p % 10, p / 10
+      for a in range(self.file.count):
+        b = game.grid(i, j)
+        if isinstance(b, Block) and b.file is self.file and b.index == a:
+          i += 1
+          if i == 10:
+            i = 0
+            j += 1
+        else:
+          break
+      else:
+        self.file.awarded = True
+        game.player.say(self.file.text)
 
   def think(self, dt):
     if self.carrier:
@@ -309,6 +325,15 @@ class Virus(object):
     self.z = -self.j + 10
 
 
+class File(object):
+  def __init__(self, name, text):
+    self.name = name
+    self.text = text
+    self.color = None # Set later.
+    self.count = 0 # Set later.
+    self.awarded = False
+
+
 class Game(object):
   def __init__(self):
     self.objs = []
@@ -342,7 +367,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel(4, 4)
+    self.makelevel(4, 4, 1, 1)
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.t0 = self.time
@@ -372,20 +397,20 @@ class Game(object):
     window.push_handlers(self.keys)
     pyglet.app.run()
 
-  def makelevel(self, color_count, avg_length):
+  def makelevel(self, file_count, max_length, corruption, virus):
     self.objs = []
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
-    abilities = [
-      ('carry', 'Ram Disk assembled!', 'Carry any number of blocks.'),
-      ('killer', 'Anti Virus assembled!', 'Drop a block on a virus to kill it.'),
-      ('fixer', 'Disk Doctor assembled!', 'Stand still on bad sectors to fix them.'),
-      ('tracker', 'Fast Tracker assembled!', 'Blocks now make music.'),
-      ('extension', 'Partition Extender assembled!', 'You can move outside the partition.'),
-      ('push', 'Sokoban assembled!', 'Walk into blocks to push them.'),
-      ('flight', 'Flight Simulator assembled!', 'Tap SPACE to lift off or land.'),
-      ('compress', 'Drive Space assembled!', 'No idea for this one.'),
+    files = [
+      File('Ram Disk', 'Carry any number of blocks.'),
+      File('Anti Virus', 'Drop a block on a virus to kill it.'),
+      File('Disk Doctor', 'Stand still on bad sectors to fix them.'),
+      File('Fast Tracker', 'Blocks now make music.'),
+      File('Partition Extender', 'You can move outside the partition.'),
+      File('Sokoban', 'Walk into blocks to push them.'),
+      File('Flight Simulator', 'Tap SPACE to lift off or land.'),
+      File('Drive Space', 'No idea for this one.'),
     ]
     colors = [
       hx(0x5599ff), # blue
@@ -398,24 +423,28 @@ class Game(object):
       hx(0xeeaaff), # magenta
       hx(0xfff6d5), # light grey
       hx(0x99aa77), # dark grey
-      ][:color_count]
-    counts = {}
-    p = color_count * avg_length / 100.0
-    total = 0
-    for i in range(10):
-      for j in range(10):
-        if i == 0 and j == 0 or i == 5 and j == 5:
-          continue
-        if random.random() < 0.02:
-          self.add(Corruption(i, j))
-        if total < color_count * 10 and random.random() < p:
-          color = random.choice(colors)
-          while counts.get(color) == 10:
-            color = random.choice(colors)
-          counts[color] = counts.get(color, 0) + 1
-          self.add(Block(i, j, color, counts[color] - 1))
-          total += 1
-    self.add(Virus(5, 5))
+      ]
+    lengths = [random.randint(2, max_length) for f in files]
+    for f, c, l in zip(files, colors, lengths):
+      f.color = c
+      f.count = l
+    files = files[:file_count]
+    for f in files:
+      for a in range(f.count):
+        i, j = random.randrange(10), random.randrange(10)
+        while self.grid(i, j) != 'free':
+          i, j = random.randrange(10), random.randrange(10)
+        self.add(Block(i, j, f, a))
+    for a in range(virus):
+      i, j = random.randrange(10), random.randrange(10)
+      while self.grid(i, j) != 'free':
+        i, j = random.randrange(10), random.randrange(10)
+      self.add(Virus(i, j))
+    for a in range(corruption):
+      i, j = random.randrange(10), random.randrange(10)
+      while any(isinstance(obj, Corruption) for obj in self.allgrid(i, j)):
+        i, j = random.randrange(10), random.randrange(10)
+      self.add(Corruption(i, j))
 
 if __name__ == '__main__':
   game = Game()
