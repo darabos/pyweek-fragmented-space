@@ -56,6 +56,7 @@ class Player(object):
     self.phase = 0
     self.stack = []
     self.move(0, 0)
+    self.think(0)
 
   def draw(self):
     self.sprite.draw()
