@@ -341,7 +341,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel()
+    self.makelevel(4, 4)
     self.add(label('Fragmented Space', x = 0, y = 250))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.t0 = self.time
@@ -371,24 +371,25 @@ class Game(object):
     window.push_handlers(self.keys)
     pyglet.app.run()
 
-  def makelevel(self):
+  def makelevel(self, color_count, avg_length):
     self.objs = []
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
     colors = [
-      hx(0xfff6d5),
-      hx(0x99ff55),
-      hx(0xff2a2a),
-      hx(0xff6600),
-      hx(0xc8c4b7),
-      hx(0xafdde9),
-      hx(0x5599ff),
-      hx(0xeeaaff),
-      hx(0xff2ad4),
-      hx(0xffff00),
-      ]
+      hx(0x5599ff), # blue
+      hx(0xff2a2a), # red
+      hx(0xaaff55), # green
+      hx(0xffff00), # yellow
+      hx(0xafdde9), # teal
+      hx(0xff2ad4), # purple
+      hx(0xffaa22), # orange
+      hx(0xeeaaff), # magenta
+      hx(0xfff6d5), # light grey
+      hx(0x99aa77), # dark grey
+      ][:color_count]
     counts = {}
+    p = color_count * avg_length / 100.0
     total = 0
     for i in range(10):
       for j in range(10):
@@ -396,7 +397,7 @@ class Game(object):
           continue
         if random.random() < 0.02:
           self.add(Corruption(i, j))
-        if total < colors * 10 and random.random() < 0.7:
+        if total < color_count * 10 and random.random() < p:
           color = random.choice(colors)
           while counts.get(color) == 10:
             color = random.choice(colors)
