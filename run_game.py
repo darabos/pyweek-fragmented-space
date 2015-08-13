@@ -378,11 +378,14 @@ class Game(object):
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
     abilities = [
-      ('flight', 'Flight Simulator assembled!', 'Tap SPACE to lift off or land.'),
-      ('push', 'Sokoban assembled!', 'Walk into blocks to push them.'),
-      ('fixer', 'Disk Doctor assembled!', 'Stand still on bad sectors to fix them.'),
       ('carry', 'Ram Disk assembled!', 'Carry any number of blocks.'),
-      ('killer', 'Antivirus assembled!', 'Drop a block on a virus to kill it.'),
+      ('killer', 'Anti Virus assembled!', 'Drop a block on a virus to kill it.'),
+      ('fixer', 'Disk Doctor assembled!', 'Stand still on bad sectors to fix them.'),
+      ('tracker', 'Fast Tracker assembled!', 'Blocks now make music.'),
+      ('extension', 'Partition Extender assembled!', 'You can move outside the partition.'),
+      ('push', 'Sokoban assembled!', 'Walk into blocks to push them.'),
+      ('flight', 'Flight Simulator assembled!', 'Tap SPACE to lift off or land.'),
+      ('compress', 'Drive Space assembled!', 'No idea for this one.'),
     ]
     colors = [
       hx(0x5599ff), # blue
