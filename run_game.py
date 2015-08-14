@@ -1,5 +1,6 @@
 # coding=utf-8
 import collections
+import math
 import random
 import pyglet
 from pyglet.window import key
@@ -57,6 +58,7 @@ class Player(object):
     self.stack = []
     self.move(0, 0)
     self.think(0)
+    self.immunity = 0
 
   def draw(self):
     self.sprite.draw()
@@ -135,16 +137,27 @@ class Player(object):
     self.phase = self.steptime
 
   def hurt(self):
+    if game.time < self.immunity:
+      return # Still immune.
     self.say(random.choice(['Ah', 'Ouch', 'Oops', 'Eep']))
     self.sprite = self.hurting
-    for b in self.stack:
-      game.objs.remove(b)
+    places = []
+    for i in range(10):
+      for j in range(10):
+        b = game.grid(i, j)
+        if b == 'free' or isinstance(b, Corruption):
+          d = math.sqrt((i - self.i) * (i - self.i) + (j - self.j) * (j - self.j))
+          places.append((d, i, j))
+    places.sort()
+    for (b, (d, i, j)) in zip(self.stack, places):
+      b.dropped(i, j)
     self.stack = []
     self.oi = self.i
     self.oj = self.j
     self.sprite.x = toX(self.i)
     self.sprite.y = toY(self.j)
     self.phase = self.steptime * 2
+    self.immunity = self.steptime * 4 + game.time
 
   def say(self, msg):
     game.add(Tip(msg, x = self.sprite.x, y = self.sprite.y + 20))
