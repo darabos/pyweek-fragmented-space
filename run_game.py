@@ -215,7 +215,7 @@ class Corruption(object):
 
 
 class Block(object):
-  def __init__(self, i, j, file, index):
+  def __init__(self, i, j, file, index, t0):
     self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
     self.sprite = self.inside
     self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
@@ -224,6 +224,7 @@ class Block(object):
     self.index = index
     self.i = i
     self.j = j
+    self.t0 = t0 # Time to start appearing.
     self.inside.x = toX(i)
     self.inside.y = toY(j)
     self.outside.x = toX(i)
@@ -232,6 +233,13 @@ class Block(object):
     self.carrier = None
     self.vx = 0
     self.vy = 0
+    if game.time <= self.t0:
+      self.scale(0)
+    self.think(0)
+
+  def scale(self, s):
+    self.inside.scale = s
+    self.outside.scale = s
 
   def draw(self):
     if self.carrier:
@@ -243,8 +251,7 @@ class Block(object):
     self.carrier = carrier
     self.inside.batch = None
     self.outside.batch = None
-    self.inside.scale = 0.8
-    self.outside.scale = 0.8
+    self.scale(0.8)
     self.file.complete = False
 
   def dropped(self, i, j):
@@ -254,8 +261,7 @@ class Block(object):
     self.z = -self.j
     self.inside.batch = game.layers['blocks-inside']
     self.outside.batch = game.layers['blocks-outside']
-    self.inside.scale = 1
-    self.outside.scale = 1
+    self.scale(1)
     self.checkcomplete()
 
   def checkcomplete(self):
@@ -291,6 +297,12 @@ class Block(object):
     self.inside.y += self.vy
     self.outside.x += self.vx
     self.outside.y += self.vy
+    poptime = 0.3
+    if self.t0 < game.time < self.t0 + poptime:
+      self.scale((game.time - self.t0) / poptime)
+    elif self.t0 < game.time < self.t0 + poptime + dt:
+      self.scale(1)
+
 
 
 class Virus(object):
@@ -387,7 +399,7 @@ class Note(object):
     gl.glLineWidth(1)
     vs = len(coords) / 2
     t = game.time - self.t0
-    if self.ttl:
+    if self.ttl and self.ttl - game.time < 1:
       t = self.ttl - game.time
     op = int(min(1, t) * self.opacity)
     pyglet.graphics.draw(vs, gl.GL_LINE_STRIP, ('v2i', coords), ('c4B', (0, 0, 0, 0) + (0, 0, 0, op) * (vs - 1)))
@@ -451,10 +463,10 @@ class Game(object):
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
     self.makelevel(4, 4, 1, 1)
-    self.add(label('Fragmented Space', x = 0, y = 250))
+#    self.add(label('Fragmented Space', x = 0, y = 250))
+#    self.add(story('A game of my life on a platter', x = 0, y = 190))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.t0 = self.time
-    self.add(story('A game of my life on a platter', x = 0, y = 190))
     gl.glClearColor(255, 255, 255, 255)
     gl.glEnable(gl.GL_LINE_SMOOTH);
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
@@ -519,7 +531,7 @@ class Game(object):
         i, j = random.randrange(10), random.randrange(10)
         while self.grid(i, j) != 'free':
           i, j = random.randrange(10), random.randrange(10)
-        self.add(Block(i, j, f, a))
+        self.add(Block(i, j, f, a, game.time + j * 0.03))
     for a in range(virus):
       i, j = random.randrange(10), random.randrange(10)
       while self.grid(i, j) != 'free':
