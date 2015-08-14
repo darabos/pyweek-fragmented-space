@@ -186,7 +186,8 @@ class Corruption(object):
   walkable = True
 
   def __init__(self, i, j):
-    self.sprite = sprite('images/corruption.png', batch = game.layers['corruption'])
+    rnd = random.randrange(5)
+    self.sprite = sprite('images/corruption-{}.png'.format(rnd), batch = game.layers['corruption'])
     self.i = i
     self.j = j
     self.sprite.x = toX(i)
@@ -462,7 +463,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel(4, 4, 1, 1)
+    self.makelevel(4, 6, 4, 1)
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
