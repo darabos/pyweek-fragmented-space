@@ -6,6 +6,9 @@ import pyglet
 from pyglet.graphics import gl
 from pyglet.window import key
 
+sounds = dict((f, pyglet.resource.media('sounds/{}.ogg'.format(f), streaming = False)) for f in
+  ['pickup', 'drop', 'hurt', 'flight', 'corruption', 'reveal', 'win', 'complete', 'uncomplete', 'bounce', 'fail', 'repair', 'beep', 'squish'])
+
 def label(text, **kwargs):
   pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
   kwargs.setdefault('font_name', 'Montserrat')
@@ -93,9 +96,10 @@ class Player(object):
               c.sprite.y = toY(c.j) + random.randint(-2, 2)
               if c != self.patient:
                 self.patient = c
+                self.repairsound = sounds['repair'].play()
                 c.health = 0
               c.health += dt
-              if c.health >= 1.5:
+              if c.health >= 1.2:
                 game.objs.remove(c)
                 self.patient = None
           if game.keys[key.UP]:
@@ -113,13 +117,18 @@ class Player(object):
 
       else:
         self.patient = None
+        if hasattr(self, 'repairsound'):
+          self.repairsound.pause()
+          del self.repairsound
         if game.files['Flight Simulator'].complete and self.lastnospacetime < self.lastspacetime and game.time - self.lastnospacetime < 0.4:
           # Short tap. Start/stop flying.
           if not self.flying:
             self.flying = game.time
+            sounds['flight'].play()
           else:
             b = game.grid(self.i, self.j)
             if b == 'free' or getattr(b, 'walkable', False):
+              sounds['flight'].play()
               self.flying = False
         self.lastnospacetime = game.time
         self.sprite = self.flyingsprite if self.flying else self.idling
@@ -161,6 +170,7 @@ class Player(object):
       # Bounce back.
       self.oi += di * 0.2
       self.oj += dj * 0.2
+      sounds['bounce'].play()
     self.phase = self.steptime
 
   def lift(self, di, dj):
@@ -170,25 +180,32 @@ class Player(object):
     if b == 'free' and self.stack:
       b = self.stack.pop()
       b.dropped(i, j)
+      sounds['drop'].play()
     elif isinstance(b, Block):
       if b.vibrant:
         if self.stack:
           self.say('My hands are full!')
+          sounds['fail'].play()
         else:
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
+          sounds['win'].play()
           print 'Level done!'
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
+        sounds['pickup'].play()
       else:
         self.say('My hands are full!')
+        sounds['fail'].play()
     elif not self.stack:
       return
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
+      sounds['fail'].play()
     elif isinstance(b, Virus) and game.files['Anti Virus'].complete:
       self.say('Squish.')
+      sounds['squish'].play()
       game.objs.remove(b)
       b = self.stack.pop()
       b.dropped(i, j)
@@ -197,6 +214,7 @@ class Player(object):
   def hurt(self):
     if game.time < self.immunity:
       return # Still immune.
+    sounds['hurt'].play()
     self.say(random.choice(['Ah', 'Ouch', 'Oops', 'Eep']))
     self.sprite = self.hurting
     places = []
@@ -273,6 +291,7 @@ class Corruption(object):
       for (i, j) in set(neighbors) - set(cs):
         if 0 <= i < 10 and 0 <= j < 10:
           game.add(Corruption(i, j))
+      sounds['corruption'].play()
       game.checkchange()
       self.primed = False
 
@@ -447,8 +466,10 @@ class File(object):
     if value:
       zero = [o for o in game.objs if isinstance(o, Block) and o.index == 0 and o.file is self][0]
       self.note = game.add(Note(zero.i, zero.j, self.name, self.text))
+      sounds['complete'].play()
     else:
       self.note.delete()
+      sounds['uncomplete'].play()
 
 
 class Note(object):
@@ -639,6 +660,7 @@ class Game(object):
       b = self.add(Block(p % 10, p / 10, None, 0, game.time))
       b.vibrant = True
       self.vibrant = b
+      sounds['reveal'].play()
     elif longest < needed and self.vibrant:
       self.objs.remove(self.vibrant)
       self.vibrant = False
