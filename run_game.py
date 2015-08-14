@@ -125,8 +125,16 @@ class Player(object):
       b = self.stack.pop()
       b.dropped(i, j)
     elif isinstance(b, Block):
-      b.taken(self.stack[-1] if self.stack else self)
-      self.stack.append(b)
+      if b.vibrant:
+        if self.stack:
+          self.say('My hands are full!')
+        else:
+          b.taken(self.stack[-1] if self.stack else self)
+          self.stack.append(b)
+          print 'Level done!'
+      else:
+        b.taken(self.stack[-1] if self.stack else self)
+        self.stack.append(b)
     elif not self.stack:
       return
     elif isinstance(b, Corruption):
@@ -217,6 +225,7 @@ class Corruption(object):
       for (i, j) in set(neighbors) - set(cs):
         if 0 <= i < 10 and 0 <= j < 10:
           game.add(Corruption(i, j))
+      game.checkchange()
       self.primed = False
 
 
@@ -225,7 +234,8 @@ class Block(object):
     self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
     self.sprite = self.inside
     self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
-    self.inside.color = file.color
+    if file:
+      self.inside.color = file.color
     self.file = file
     self.index = index
     self.i = i
@@ -242,12 +252,15 @@ class Block(object):
     if game.time <= self.t0:
       self.scale(0)
     self.think(0)
+    self.vibrant = False
 
   def scale(self, s):
     self.inside.scale = s
     self.outside.scale = s
 
   def draw(self):
+    if self.vibrant:
+      self.inside.color = random.randrange(128, 256), random.randrange(128, 256), random.randrange(128, 256)
     if self.carrier:
       self.inside.draw()
       self.outside.draw()
@@ -258,7 +271,9 @@ class Block(object):
     self.inside.batch = None
     self.outside.batch = None
     self.scale(0.8)
-    self.file.complete = False
+    if self.file:
+      self.file.complete = False
+    game.checkchange()
 
   def dropped(self, i, j):
     self.i = i
@@ -268,9 +283,12 @@ class Block(object):
     self.inside.batch = game.layers['blocks-inside']
     self.outside.batch = game.layers['blocks-outside']
     self.scale(1)
+    game.checkchange()
     self.checkcomplete()
 
   def checkcomplete(self):
+    if not self.file:
+      return
     p = 10 * self.j + self.i - self.index
     i, j = p % 10, p / 10
     for a in range(self.file.count):
@@ -482,7 +500,7 @@ class Game(object):
       window.clear()
       gl.glLoadIdentity()
       gl.glTranslatef(window.width / 2, window.height / 2, 0)
-      for l in ['corruption', 'markings', 'blocks-inside', 'blocks-outside']:
+      for l in ['corruption', 'longest', 'blocks-inside', 'blocks-outside']:
         self.layers[l].draw()
       self.objs.sort(key=lambda o: o.z if hasattr(o, 'z') else 100)
       for o in self.objs:
@@ -548,6 +566,49 @@ class Game(object):
       while any(isinstance(obj, Corruption) for obj in self.allgrid(i, j)):
         i, j = random.randrange(10), random.randrange(10)
       self.add(Corruption(i, j))
+    self.vibrant = False
+    self.checkchange()
+
+  hundred = [random.randrange(7) for i in range(100)]
+  def checkchange(self):
+    blocks = [o for o in self.objs if isinstance(o, Block) and hasattr(o, 'j') and not o.vibrant]
+    taken = set(o.i + 10 * o.j for o in blocks)
+    start = 0
+    longest = 0
+    last = -1
+    for p in range(100):
+      if p in taken:
+        span = p - last - 1
+        if span > longest:
+          longest = span
+          start = last + 1
+        last = p
+    needed = (100 - len(blocks)) / 2
+    if longest >= needed and not self.vibrant:
+      p = start + longest / 2
+      b = self.add(Block(p % 10, p / 10, None, 0, game.time))
+      b.vibrant = True
+      self.vibrant = b
+    elif longest < needed and self.vibrant:
+      self.objs.remove(self.vibrant)
+      self.vibrant = False
+
+    corruption = [o for o in self.objs if isinstance(o, Corruption)]
+    corruption = set(o.i + 10 * o.j for o in corruption)
+    self.longest = []
+    for p in range(start, start + longest):
+      if p in corruption:
+        continue
+      s = sprite('images/longest-{}.png'.format(self.hundred[p]))
+      s.x = toX(p % 10)
+      s.y = toY(p / 10)
+      s.batch = self.layers['longest']
+      if self.vibrant:
+        s.color = 0, 255, 0
+      else:
+        s.color = 0, 0, 0
+      s.opacity = 40
+      self.longest.append(s)
 
 if __name__ == '__main__':
   game = Game()
