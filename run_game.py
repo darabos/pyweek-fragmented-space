@@ -77,6 +77,19 @@ class Player(object):
     if self.phase == 0:
       if game.keys[key.SPACE]:
         self.sprite = self.lifting
+        if game.files['Disk Doctor'].complete:
+          c = [o for o in game.allgrid(self.i, self.j) if isinstance(o, Corruption)]
+          if c:
+            c = c[0]
+            c.sprite.x = toX(c.i) + random.randint(-2, 2)
+            c.sprite.y = toY(c.j) + random.randint(-2, 2)
+            if c != self.patient:
+              self.patient = c
+              c.health = 0
+            c.health += dt
+            if c.health >= 1.5:
+              game.objs.remove(c)
+              self.patient = None
         if game.keys[key.UP]:
           self.lift(0, -1)
         elif game.keys[key.DOWN]:
@@ -86,6 +99,7 @@ class Player(object):
         elif game.keys[key.RIGHT]:
           self.lift(1, 0)
       else:
+        self.patient = None
         self.sprite = self.idling
         if game.keys[key.UP]:
           self.sprite = self.movingup
@@ -529,7 +543,7 @@ class Game(object):
     files = [
       File('Drive Space', 'Carry any number of blocks.'), # Done.
       File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
-      File('Disk Doctor', 'Stand on bad sectors to fix them.'),
+      File('Disk Doctor', 'Press SPACE to repair bad sectors.'), # Done.
       File('Fast Tracker', 'Blocks make music.'),
       File('Partition Extender', 'Move outside the partition.'),
       File('Sokoban', 'Walk into blocks to push them.'),
