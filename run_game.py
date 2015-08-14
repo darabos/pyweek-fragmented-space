@@ -453,6 +453,7 @@ class File(object):
     self.color = None # Set later.
     self.count = 0 # Set later.
     self._complete = False
+    self.note = None
 
   @property
   def complete(self):
@@ -465,6 +466,8 @@ class File(object):
     self._complete = value
     if value:
       zero = [o for o in game.objs if isinstance(o, Block) and o.index == 0 and o.file is self][0]
+      if self.note in game.objs:
+        game.objs.remove(self.note)
       self.note = game.add(Note(zero.i, zero.j, self.name, self.text))
       sounds['complete'].play()
     else:
