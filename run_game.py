@@ -132,14 +132,16 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           print 'Level done!'
-      else:
+      elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
+      else:
+        self.say('My hands are full!')
     elif not self.stack:
       return
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
-    elif isinstance(b, Virus):
+    elif isinstance(b, Virus) and game.files['Anti Virus'].complete:
       self.say('Squish.')
       game.objs.remove(b)
       b = self.stack.pop()
@@ -435,14 +437,15 @@ class Note(object):
     notes = [n for n in game.objs if isinstance(n, Note)]
     taken = set(n.position for n in notes)
     phi = math.atan2(toY(self.bj), toX(self.bi)) % (math.pi * 2)
-    opt = int(10 * phi / math.pi / 2)
-    for i in range(10):
+    files = len(game.files)
+    opt = int(files * phi / math.pi / 2)
+    for i in range(files):
       o = opt + i
       if o in taken:
         o = opt - i
       if o in taken:
         continue
-      phi = 2 * math.pi * o / 10
+      phi = 2 * math.pi * o / files
       return o, math.cos(phi) * abs(toX(14)), math.sin(phi) * abs(toY(13))
 
   def delete(self):
@@ -524,15 +527,15 @@ class Game(object):
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
     files = [
-      File('Ram Disk', 'Carry any number of blocks.'),
-      File('Anti Virus', 'Drop a block on a virus to kill it.'),
-      File('Disk Doctor', 'Stand still on bad sectors to fix them.'),
-      File('Fast Tracker', 'Blocks now make music.'),
-      File('Partition Extender', 'You can move outside the partition.'),
+      File('Drive Space', 'Carry any number of blocks.'), # Done.
+      File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
+      File('Disk Doctor', 'Stand on bad sectors to fix them.'),
+      File('Fast Tracker', 'Blocks make music.'),
+      File('Partition Extender', 'Move outside the partition.'),
       File('Sokoban', 'Walk into blocks to push them.'),
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
-      File('Drive Space', 'No idea for this one.'),
     ]
+    self.files = dict((f.name, f) for f in files)
     colors = [
       hx(0x5599ff), # blue
       hx(0xff2a2a), # red
