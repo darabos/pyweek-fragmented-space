@@ -125,6 +125,13 @@ class Player(object):
       self.i += di
       self.j += dj
       self.z = -self.j + 10
+    elif game.files['Sokoban'].complete and isinstance(b, Block) and game.grid(self.i + 2 * di, self.j + 2 * dj) == 'free':
+      b.i += di
+      b.j += dj
+      game.checkchange()
+      self.i += di
+      self.j += dj
+      self.z = -self.j + 10
     else:
       # Bounce back.
       self.oi += di * 0.2
@@ -541,12 +548,12 @@ class Game(object):
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
     files = [
+      File('Fast Tracker', 'Blocks make music.'),
+      File('Sokoban', 'Walk into blocks to push them.'), # Done.
       File('Drive Space', 'Carry any number of blocks.'), # Done.
       File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
       File('Disk Doctor', 'Press SPACE to repair bad sectors.'), # Done.
-      File('Fast Tracker', 'Blocks make music.'),
       File('Extended Partition', 'Move outside the partition.'), # Done.
-      File('Sokoban', 'Walk into blocks to push them.'),
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
     self.files = dict((f.name, f) for f in files)
@@ -556,9 +563,9 @@ class Game(object):
       hx(0xaaff55), # green
       hx(0xffff00), # yellow
       hx(0xafdde9), # teal
-      hx(0xff2ad4), # purple
+      hx(0xeeaaff), # purple
       hx(0xffaa22), # orange
-      hx(0xeeaaff), # magenta
+      hx(0xff2ad4), # magenta
       hx(0xfff6d5), # light grey
       hx(0x99aa77), # dark grey
       ]
