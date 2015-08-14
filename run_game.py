@@ -121,7 +121,7 @@ class Player(object):
 
   def move(self, di, dj):
     b = game.grid(self.i + di, self.j + dj)
-    if b == 'free' or getattr(b, 'walkable', False):
+    if b == 'free' or getattr(b, 'walkable', False) or game.files['Extended Partition'].complete and b == 'wall':
       self.i += di
       self.j += dj
       self.z = -self.j + 10
@@ -503,7 +503,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel(4, 6, 4, 1)
+    self.makelevel(7, 4, 4, 1)
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
@@ -545,7 +545,7 @@ class Game(object):
       File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
       File('Disk Doctor', 'Press SPACE to repair bad sectors.'), # Done.
       File('Fast Tracker', 'Blocks make music.'),
-      File('Partition Extender', 'Move outside the partition.'),
+      File('Extended Partition', 'Move outside the partition.'), # Done.
       File('Sokoban', 'Walk into blocks to push them.'),
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
