@@ -3,6 +3,7 @@ import collections
 import math
 import random
 import pyglet
+from pyglet.graphics import gl
 from pyglet.window import key
 
 def label(text, **kwargs):
@@ -34,6 +35,7 @@ def sprite(f, **kwargs):
 
 def toX(i):
   return (i - 4.5) * 30
+
 def toY(j):
   return (4.5 - j) * 30
 
@@ -243,6 +245,7 @@ class Block(object):
     self.outside.batch = None
     self.inside.scale = 0.8
     self.outside.scale = 0.8
+    self.file.complete = False
 
   def dropped(self, i, j):
     self.i = i
@@ -253,22 +256,23 @@ class Block(object):
     self.outside.batch = game.layers['blocks-outside']
     self.inside.scale = 1
     self.outside.scale = 1
-    if not self.file.awarded:
-      # Check if the file is complete.
-      p = 10 * j + i - self.index
-      i, j = p % 10, p / 10
-      for a in range(self.file.count):
-        b = game.grid(i, j)
-        if isinstance(b, Block) and b.file is self.file and b.index == a:
-          i += 1
-          if i == 10:
-            i = 0
-            j += 1
-        else:
-          break
+    self.checkcomplete()
+
+  def checkcomplete(self):
+    p = 10 * self.j + self.i - self.index
+    i, j = p % 10, p / 10
+    for a in range(self.file.count):
+      b = game.grid(i, j)
+      if isinstance(b, Block) and b.file is self.file and b.index == a:
+        i += 1
+        if i == 10:
+          i = 0
+          j += 1
       else:
-        self.file.awarded = True
-        game.player.say(self.file.text)
+        self.file.complete = False
+        break
+    else:
+      self.file.complete = True
 
   def think(self, dt):
     if self.carrier:
@@ -344,7 +348,73 @@ class File(object):
     self.text = text
     self.color = None # Set later.
     self.count = 0 # Set later.
-    self.awarded = False
+    self._complete = False
+
+  @property
+  def complete(self):
+    return self._complete
+
+  @complete.setter
+  def complete(self, value):
+    if value == self._complete:
+      return
+    self._complete = value
+    if value:
+      zero = [o for o in game.objs if isinstance(o, Block) and o.index == 0 and o.file is self][0]
+      self.note = game.add(Note(zero.i, zero.j, self.name, self.text))
+    else:
+      self.note.delete()
+
+
+class Note(object):
+  def __init__(self, i, j, text1, text2):
+    self.bi = i
+    self.bj = j
+    self.position, self.x, self.y = self.pickposition()
+    self.opacity = 191
+    self.text1 = label(text1, x = self.x, y = self.y + 16, font_size = 16, color = (0, 0, 0, self.opacity))
+    self.text2 = story(text2, x = self.x, y = self.y - 12, font_size = 10, color = (0, 0, 0, self.opacity))
+    self.t0 = game.time
+    self.ttl = 0
+
+  def draw(self):
+    bx, by = toX(self.bi), toY(self.bj)
+    lx, ly = self.x, self.y
+    flat = math.copysign(self.text1.content_width / 2, lx - bx)
+    coords = int(bx), int(by), int(lx - flat), int(ly), int(lx + flat), int(ly)
+    gl.glEnable(gl.GL_BLEND);
+    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
+    gl.glLineWidth(1)
+    vs = len(coords) / 2
+    t = game.time - self.t0
+    if self.ttl:
+      t = self.ttl - game.time
+    op = int(min(1, t) * self.opacity)
+    pyglet.graphics.draw(vs, gl.GL_LINE_STRIP, ('v2i', coords), ('c4B', (0, 0, 0, 0) + (0, 0, 0, op) * (vs - 1)))
+    if t > 0.5 or t > 0.25 and t % 0.05 < 0.02:
+      self.text1.draw()
+      self.text2.draw()
+
+  def pickposition(self):
+    notes = [n for n in game.objs if isinstance(n, Note)]
+    taken = set(n.position for n in notes)
+    phi = math.atan2(toY(self.bj), toX(self.bi)) % (math.pi * 2)
+    opt = int(10 * phi / math.pi / 2)
+    for i in range(10):
+      o = opt + i
+      if o in taken:
+        o = opt - i
+      if o in taken:
+        continue
+      phi = 2 * math.pi * o / 10
+      return o, math.cos(phi) * abs(toX(14)), math.sin(phi) * abs(toY(13))
+
+  def delete(self):
+    self.ttl = game.time + 0.5
+
+  def think(self, dt):
+    if self.ttl and game.time >= self.ttl:
+      game.objs.remove(self)
 
 
 class Game(object):
@@ -385,13 +455,15 @@ class Game(object):
     self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
     self.t0 = self.time
     self.add(story('A game of my life on a platter', x = 0, y = 190))
-    pyglet.gl.glClearColor(255, 255, 255, 255)
+    gl.glClearColor(255, 255, 255, 255)
+    gl.glEnable(gl.GL_LINE_SMOOTH);
+    gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
     @window.event
     def on_draw():
       self.timeremaining.text = '{:.1f}'.format(100 + self.t0 - self.time)
       window.clear()
-      pyglet.gl.glLoadIdentity()
-      pyglet.gl.glTranslatef(window.width / 2, window.height / 2, 0)
+      gl.glLoadIdentity()
+      gl.glTranslatef(window.width / 2, window.height / 2, 0)
       for l in ['corruption', 'markings', 'blocks-inside', 'blocks-outside']:
         self.layers[l].draw()
       self.objs.sort(key=lambda o: o.z if hasattr(o, 'z') else 100)
