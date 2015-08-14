@@ -157,9 +157,11 @@ class Player(object):
       self.j += dj
       self.z = -self.j + 10
     elif game.files['Sokoban'].complete and isinstance(b, Block) and game.grid(self.i + 2 * di, self.j + 2 * dj) == 'free':
+      game.playsound('push')
       b.i += di
       b.j += dj
       game.checkchange()
+      b.checkcomplete()
       self.i += di
       self.j += dj
       self.z = -self.j + 10
@@ -283,7 +285,7 @@ class Corruption(object):
       self.sprite.opacity = 255
     if not self.primed and isinstance(game.grid(self.i, self.j), Block):
       self.primed = True
-    if self.primed and game.grid(self.i, self.j) == self:
+    if self.primed and not isinstance(game.grid(self.i, self.j), Block):
       neighbors = [
         (self.i + 1, self.j),
         (self.i - 1, self.j),
@@ -533,7 +535,7 @@ class Note(object):
 class Game(object):
   def __init__(self):
     self.objs = []
-    soundnames = ['pickup', 'drop', 'hurt', 'flight', 'corruption', 'reveal', 'win', 'complete', 'uncomplete', 'bounce', 'fail', 'repair', 'beep', 'squish']
+    soundnames = 'pickup drop hurt flight corruption reveal win complete uncomplete bounce fail repair beep squish push'.split()
     for f in self.allfiles():
       for i in range(10):
         soundnames.append(f.name + '/' + str(i))
@@ -606,12 +608,12 @@ class Game(object):
   def allfiles(self):
     return [
       File('Fast Tracker', 'Blocks make music.'),
-      File('Sokoban', 'Walk into blocks to push them.'), # Done.
-      File('Drive Space', 'Carry any number of blocks.'), # Done.
-      File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
-      File('Disk Doctor', 'Press SPACE to repair bad sectors.'), # Done.
-      File('Extended Partition', 'Move outside the partition.'), # Done.
-      File('Flight Simulator', 'Tap SPACE to lift off or land.'), # Done.
+      File('Sokoban', 'Walk into blocks to push them.'),
+      File('Drive Space', 'Carry any number of blocks.'),
+      File('Anti Virus', 'Drop a block on a virus to kill it.'),
+      File('Disk Doctor', 'Press SPACE to repair bad sectors.'),
+      File('Extended Partition', 'Move outside the partition.'),
+      File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
 
   def makelevel(self, file_count, max_length, corruption, virus):
@@ -664,7 +666,8 @@ class Game(object):
     start = 0
     longest = 0
     last = -1
-    for p in range(100):
+    taken.add(100) # Sentinel block at the end.
+    for p in range(101):
       if p in taken:
         span = p - last - 1
         if span > longest:
