@@ -194,11 +194,16 @@ class Corruption(object):
     self.sprite.y = toY(j)
     self.z = -j - 0.1
     self.primed = False
+    self.t0 = game.time
 
   def draw(self):
     pass
 
   def think(self, dt):
+    if game.time < self.t0 + 0.3:
+      self.sprite.opacity = 0 if game.time % 0.1 < 0.05 else 255
+    elif self.sprite.opacity != 255:
+      self.sprite.opacity = 255
     if not self.primed and isinstance(game.grid(self.i, self.j), Block):
       self.primed = True
     if self.primed and game.grid(self.i, self.j) == self:
