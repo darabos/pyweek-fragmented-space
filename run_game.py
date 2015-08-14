@@ -6,9 +6,6 @@ import pyglet
 from pyglet.graphics import gl
 from pyglet.window import key
 
-sounds = dict((f, pyglet.resource.media('sounds/{}.ogg'.format(f), streaming = False)) for f in
-  ['pickup', 'drop', 'hurt', 'flight', 'corruption', 'reveal', 'win', 'complete', 'uncomplete', 'bounce', 'fail', 'repair', 'beep', 'squish'])
-
 def label(text, **kwargs):
   pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
   kwargs.setdefault('font_name', 'Montserrat')
@@ -96,7 +93,7 @@ class Player(object):
               c.sprite.y = toY(c.j) + random.randint(-2, 2)
               if c != self.patient:
                 self.patient = c
-                self.repairsound = sounds['repair'].play()
+                self.repairsound = game.playsound('repair')
                 c.health = 0
               c.health += dt
               if c.health >= 1.2:
@@ -124,11 +121,11 @@ class Player(object):
           # Short tap. Start/stop flying.
           if not self.flying:
             self.flying = game.time
-            sounds['flight'].play()
+            game.playsound('flight')
           else:
             b = game.grid(self.i, self.j)
             if b == 'free' or getattr(b, 'walkable', False):
-              sounds['flight'].play()
+              game.playsound('flight')
               self.flying = False
         self.lastnospacetime = game.time
         self.sprite = self.flyingsprite if self.flying else self.idling
@@ -170,7 +167,7 @@ class Player(object):
       # Bounce back.
       self.oi += di * 0.2
       self.oj += dj * 0.2
-      sounds['bounce'].play()
+      game.playsound('bounce')
     self.phase = self.steptime
 
   def lift(self, di, dj):
@@ -180,32 +177,38 @@ class Player(object):
     if b == 'free' and self.stack:
       b = self.stack.pop()
       b.dropped(i, j)
-      sounds['drop'].play()
+      if game.files['Fast Tracker'].complete and b.file:
+        game.playsound(b.file.name + '/' + str(b.index))
+      else:
+        game.playsound('drop')
     elif isinstance(b, Block):
       if b.vibrant:
         if self.stack:
           self.say('My hands are full!')
-          sounds['fail'].play()
+          game.playsound('fail')
         else:
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
-          sounds['win'].play()
+          game.playsound('win')
           print 'Level done!'
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
-        sounds['pickup'].play()
+        if game.files['Fast Tracker'].complete and b.file:
+          game.playsound(b.file.name + '/' + str(b.index))
+        else:
+          game.playsound('pickup')
       else:
         self.say('My hands are full!')
-        sounds['fail'].play()
+        game.playsound('fail')
     elif not self.stack:
       return
     elif isinstance(b, Corruption):
       self.say('Bad sector.')
-      sounds['fail'].play()
+      game.playsound('fail')
     elif isinstance(b, Virus) and game.files['Anti Virus'].complete:
       self.say('Squish.')
-      sounds['squish'].play()
+      game.playsound('squish')
       game.objs.remove(b)
       b = self.stack.pop()
       b.dropped(i, j)
@@ -214,7 +217,7 @@ class Player(object):
   def hurt(self):
     if game.time < self.immunity:
       return # Still immune.
-    sounds['hurt'].play()
+    game.playsound('hurt')
     self.say(random.choice(['Ah', 'Ouch', 'Oops', 'Eep']))
     self.sprite = self.hurting
     places = []
@@ -291,7 +294,7 @@ class Corruption(object):
       for (i, j) in set(neighbors) - set(cs):
         if 0 <= i < 10 and 0 <= j < 10:
           game.add(Corruption(i, j))
-      sounds['corruption'].play()
+      game.playsound('corruption')
       game.checkchange()
       self.primed = False
 
@@ -469,10 +472,10 @@ class File(object):
       if self.note in game.objs:
         game.objs.remove(self.note)
       self.note = game.add(Note(zero.i, zero.j, self.name, self.text))
-      sounds['complete'].play()
+      game.playsound('complete')
     else:
       self.note.delete()
-      sounds['uncomplete'].play()
+      game.playsound('uncomplete')
 
 
 class Note(object):
@@ -523,13 +526,21 @@ class Note(object):
     self.ttl = game.time + 0.5
 
   def think(self, dt):
-    if self.ttl and game.time >= self.ttl:
+    if self.ttl and game.time >= self.ttl and self in game.objs:
       game.objs.remove(self)
 
 
 class Game(object):
   def __init__(self):
     self.objs = []
+    soundnames = ['pickup', 'drop', 'hurt', 'flight', 'corruption', 'reveal', 'win', 'complete', 'uncomplete', 'bounce', 'fail', 'repair', 'beep', 'squish']
+    for f in self.allfiles():
+      for i in range(10):
+        soundnames.append(f.name + '/' + str(i))
+    self.sounds = dict((f, pyglet.resource.media('sounds/{}.ogg'.format(f), streaming = False)) for f in soundnames)
+
+  def playsound(self, sound):
+    return self.sounds[sound].play()
 
   def add(self, o):
     self.objs.append(o)
@@ -592,12 +603,8 @@ class Game(object):
     window.push_handlers(self.keys)
     pyglet.app.run()
 
-  def makelevel(self, file_count, max_length, corruption, virus):
-    self.objs = []
-    self.player = self.add(Player(0, 0))
-    def hx(x):
-      return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
-    files = [
+  def allfiles(self):
+    return [
       File('Fast Tracker', 'Blocks make music.'),
       File('Sokoban', 'Walk into blocks to push them.'), # Done.
       File('Drive Space', 'Carry any number of blocks.'), # Done.
@@ -606,6 +613,13 @@ class Game(object):
       File('Extended Partition', 'Move outside the partition.'), # Done.
       File('Flight Simulator', 'Tap SPACE to lift off or land.'), # Done.
     ]
+
+  def makelevel(self, file_count, max_length, corruption, virus):
+    self.objs = []
+    self.player = self.add(Player(0, 0))
+    def hx(x):
+      return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
+    files = self.allfiles()
     self.files = dict((f.name, f) for f in files)
     colors = [
       hx(0x5599ff), # blue
@@ -657,13 +671,13 @@ class Game(object):
           longest = span
           start = last + 1
         last = p
-    needed = (100 - len(blocks)) / 2
+    needed = (100 - len(blocks)) * 3 / 4
     if longest >= needed and not self.vibrant:
       p = start + longest / 2
       b = self.add(Block(p % 10, p / 10, None, 0, game.time))
       b.vibrant = True
       self.vibrant = b
-      sounds['reveal'].play()
+      self.playsound('reveal')
     elif longest < needed and self.vibrant:
       self.objs.remove(self.vibrant)
       self.vibrant = False
