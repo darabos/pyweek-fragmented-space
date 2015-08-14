@@ -50,6 +50,7 @@ class Player(object):
     self.movingdown = sprite('images/player-down.png')
     self.lifting = sprite('images/player-lifting.png')
     self.hurting = sprite('images/player-lifting.png')
+    self.flyingsprite = sprite('images/player-lifting.png')
 
     self.sprite = self.idling
     self.i = i
@@ -58,9 +59,10 @@ class Player(object):
     self.oj = j
     self.phase = 0
     self.stack = []
+    self.immunity = 0
+    self.flying = False
     self.move(0, 0)
     self.think(0)
-    self.immunity = 0
 
   def draw(self):
     self.sprite.draw()
@@ -68,39 +70,59 @@ class Player(object):
   steptime = 0.15
   def think(self, dt):
     if self.phase > 0:
-      self.phase -= dt
+      if self.flying:
+        self.phase -= 1.5 * dt # Faster.
+      else:
+        self.phase -= dt
       if self.phase <= 0:
         self.phase = 0
         self.oi = self.i
         self.oj = self.j
         self.sprite = self.idling
+
     if self.phase == 0:
       if game.keys[key.SPACE]:
-        self.sprite = self.lifting
-        if game.files['Disk Doctor'].complete:
-          c = [o for o in game.allgrid(self.i, self.j) if isinstance(o, Corruption)]
-          if c:
-            c = c[0]
-            c.sprite.x = toX(c.i) + random.randint(-2, 2)
-            c.sprite.y = toY(c.j) + random.randint(-2, 2)
-            if c != self.patient:
-              self.patient = c
-              c.health = 0
-            c.health += dt
-            if c.health >= 1.5:
-              game.objs.remove(c)
-              self.patient = None
-        if game.keys[key.UP]:
-          self.lift(0, -1)
-        elif game.keys[key.DOWN]:
-          self.lift(0, 1)
-        elif game.keys[key.LEFT]:
-          self.lift(-1, 0)
-        elif game.keys[key.RIGHT]:
-          self.lift(1, 0)
+        self.lastspacetime = game.time
+        if not self.flying:
+          self.sprite = self.lifting
+          if game.files['Disk Doctor'].complete:
+            c = [o for o in game.allgrid(self.i, self.j) if isinstance(o, Corruption)]
+            if c:
+              c = c[0]
+              c.sprite.x = toX(c.i) + random.randint(-2, 2)
+              c.sprite.y = toY(c.j) + random.randint(-2, 2)
+              if c != self.patient:
+                self.patient = c
+                c.health = 0
+              c.health += dt
+              if c.health >= 1.5:
+                game.objs.remove(c)
+                self.patient = None
+          if game.keys[key.UP]:
+            self.lift(0, -1)
+            self.lastnospacetime = 0
+          elif game.keys[key.DOWN]:
+            self.lift(0, 1)
+            self.lastnospacetime = 0
+          elif game.keys[key.LEFT]:
+            self.lift(-1, 0)
+            self.lastnospacetime = 0
+          elif game.keys[key.RIGHT]:
+            self.lift(1, 0)
+            self.lastnospacetime = 0
+
       else:
         self.patient = None
-        self.sprite = self.idling
+        if game.files['Flight Simulator'].complete and self.lastnospacetime < self.lastspacetime and game.time - self.lastnospacetime < 0.4:
+          # Short tap. Start/stop flying.
+          if not self.flying:
+            self.flying = game.time
+          else:
+            b = game.grid(self.i, self.j)
+            if b == 'free' or getattr(b, 'walkable', False):
+              self.flying = False
+        self.lastnospacetime = game.time
+        self.sprite = self.flyingsprite if self.flying else self.idling
         if game.keys[key.UP]:
           self.sprite = self.movingup
           self.move(0, -1)
@@ -115,13 +137,16 @@ class Player(object):
           self.move(1, 0)
 
     p = self.phase / self.steptime
-    p = 1 - (p - 1) * (p - 1) # Ease.
+    if not self.flying:
+      p = 1 - (p - 1) * (p - 1) # Ease.
     self.sprite.x = toX(p * self.oi + (1 - p) * self.i)
     self.sprite.y = toY(p * self.oj + (1 - p) * self.j)
+    if self.flying:
+      self.sprite.y += int(math.sin((game.time - self.flying) * 10) * 6) + 6
 
   def move(self, di, dj):
     b = game.grid(self.i + di, self.j + dj)
-    if b == 'free' or getattr(b, 'walkable', False) or game.files['Extended Partition'].complete and b == 'wall':
+    if b == 'free' or getattr(b, 'walkable', False) or game.files['Extended Partition'].complete and b == 'wall' or self.flying and b != 'wall':
       self.i += di
       self.j += dj
       self.z = -self.j + 10
@@ -289,7 +314,7 @@ class Block(object):
       self.outside.draw()
 
   def taken(self, carrier):
-    del self.j # Remove from grid.
+    self.flying = True
     self.carrier = carrier
     self.inside.batch = None
     self.outside.batch = None
@@ -299,6 +324,7 @@ class Block(object):
     game.checkchange()
 
   def dropped(self, i, j):
+    self.flying = False
     self.i = i
     self.j = j
     self.carrier = None
@@ -488,7 +514,7 @@ class Game(object):
   def allgrid(self, i, j):
     matches = []
     for o in self.objs:
-      if hasattr(o, 'j') and o.i == i and o.j == j:
+      if hasattr(o, 'j') and not getattr(o, 'flying', False) and o.i == i and o.j == j:
         matches.append(o)
     return matches
 
@@ -554,7 +580,7 @@ class Game(object):
       File('Anti Virus', 'Drop a block on a virus to kill it.'), # Done.
       File('Disk Doctor', 'Press SPACE to repair bad sectors.'), # Done.
       File('Extended Partition', 'Move outside the partition.'), # Done.
-      File('Flight Simulator', 'Tap SPACE to lift off or land.'),
+      File('Flight Simulator', 'Tap SPACE to lift off or land.'), # Done.
     ]
     self.files = dict((f.name, f) for f in files)
     colors = [
@@ -595,7 +621,7 @@ class Game(object):
 
   hundred = [random.randrange(7) for i in range(100)]
   def checkchange(self):
-    blocks = [o for o in self.objs if isinstance(o, Block) and hasattr(o, 'j') and not o.vibrant]
+    blocks = [o for o in self.objs if isinstance(o, Block) and not getattr(o, 'flying', False) and not o.vibrant]
     taken = set(o.i + 10 * o.j for o in blocks)
     start = 0
     longest = 0
