@@ -241,6 +241,7 @@ class Player(object):
       return # Still immune.
     game.playsound('hurt')
     self.say(random.choice(['Ah', 'Ouch', 'Oops', 'Eep']))
+    game.tutorial.addhappened('virus')
     self.sprite = self.hurting
     places = []
     for i in range(10):
@@ -393,6 +394,7 @@ class Corruption(object):
       for (i, j) in set(neighbors) - set(cs):
         if 0 <= i < 10 and 0 <= j < 10:
           game.add(Corruption(i, j))
+      game.tutorial.addhappened('corruption')
       game.playsound('corruption')
       game.checkchange()
       self.primed = False
@@ -694,8 +696,8 @@ class Level(object):
 
 levels = {
   1: Level(1, 1, 4, 0, 0, 0, non_random_lengths=True, only_center=True),
-  2: Level(2, 3, 10, 0, 0, 100),
-  3: Level(3, 4, 10, 2, 0, 100),
+  2: Level(2, 3, 6, 0, 0, 100, only_center=True),
+  3: Level(3, 4, 8, 4, 0, 100, only_center=True),
   4: Level(4, 5, 10, 4, 1, 100),
   5: Level(5, 6, 10, 6, 2, 200),
   6: Level(6, 7, 10, 10, 4, 300),
@@ -860,8 +862,8 @@ class Game(object):
       File('Fast Tracker', 'Blocks make music.'),
       File('Sokoban', 'Walk into blocks to push them.'),
       File('Drive Space', 'Carry any number of blocks.'),
-      File('Anti Virus', 'Drop a block on a virus to kill it.'),
       File('Disk Doctor', 'Hold SPACE to repair bad sectors.'),
+      File('Anti Virus', 'Drop a block on a virus to kill it.'),
       File('Extended Partition', 'Move outside the partition.'),
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
@@ -915,9 +917,9 @@ class Game(object):
         i, j = random.randrange(10), random.randrange(10)
       self.add(Virus(i, j))
     for a in range(corruption):
-      i, j = random.randrange(10), random.randrange(10)
+      i, j = random_coordinate(), random_coordinate()
       while any(isinstance(obj, Corruption) for obj in self.allgrid(i, j)):
-        i, j = random.randrange(10), random.randrange(10)
+        i, j = random_coordinate(), random_coordinate()
       self.add(Corruption(i, j))
     self.vibrant = False
     self.checkchange()

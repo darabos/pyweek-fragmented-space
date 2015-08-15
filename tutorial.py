@@ -34,7 +34,8 @@ class State(object):
     self.ofs = 0
     self.active_state = self.progression[self.ofs]
     for b in self.clear_happened:
-      tutorial.happened.remove(b)
+      if b in tutorial.happened:
+        tutorial.happened.remove(b)
     if isinstance(self.active_state, State):
       self.active_state.reset(tutorial)
 
@@ -46,6 +47,7 @@ class State(object):
            and self.active_state.exit.check(
              self.base_time, happened, longest, completed_files)):
       advanced = True
+      self.base_time = 0.0
       self.ofs += 1
       self.active_state = self.progression[self.ofs]
       if isinstance(self.active_state, State):
@@ -73,6 +75,9 @@ level1 = State(
           ["Great, that works. Let's move next to a data block."]),
     State(Trigger(bools=['lifted']),
           ["... and hold space and press the arrow key towards the block to read it."]),
+    State(Trigger(bools=['moved']),
+          ["Let's move around a bit, find a good place to write this block."],
+          clear_happened=['moved']),
     State(Trigger(bools=['dropped']),
           ["Mighty impressive. Now hold space and an arrow key again to write it back."]),
     State(
@@ -82,11 +87,13 @@ level1 = State(
        State(Trigger(time=4.0),
              ["Consecutive, left-to-right, top-down, like lines of text in a book."]),
        State(Trigger(longest=40),
-             [State(Trigger(time=8.0), ["I should move the data blocks away from the center of the drive."]),
-              State(Trigger(time=4.0), ["Is that car following me? Better take a detour."])]),
+             [State(Trigger(time=12.0), ["I should move the data blocks away from the center of the drive."]),
+              State(Trigger(time=4.0), ["Is that car following me? Better take a detour."])],
+             cycle=True),
        State(Trigger(longest=60),
              [State(Trigger(time=6.0), ["This isn't looking too bad. Just need a bit more space."]),
-              "Defragging a drive while doing 200kph through a city isn't easy. Good thing I used to be an F1 driver."]),
+              State(Trigger(time=12.0), ["Defragging a drive while doing 200kph through a city isn't easy. Good thing I used to be an F1 driver."])],
+             cycle=True),
        State(Trigger(longest=70),
              [State(Trigger(time=2.0), ["Almost there..."]),
               "This is almost enough for Bob's data, just a bit more."]),
@@ -97,9 +104,36 @@ level1 = State(
            State(Trigger(bools=['pre_victory']),
                  ["Gah! And I was so close!"],
                  clear_happened=['pre_victory'])],
-          clear_happened=['dropped']),
+          clear_happened=['dropped'],
+          cycle=True),
     State(Trigger(),
-          ["What's this? There's some hidden data here! Better read it!"]),
+          [
+            State(Trigger(time=8.0),
+                  ["That's enough space for Bob's data... Wait, there's a hidden block here! Better read it!"]),
+            State(Trigger(time=10.0),
+                  ["I observed the blinking block of data for some time before approaching it. You can never be too careful in my line of work."]),
+            State(Trigger(time=10.0),
+                  ["It was still just sitting there. Silent. Blinking. A less cautious person might've read it by now, but I wasn't taking any chances."]),
+            State(Trigger(time=10.0),
+                  ["The more I stared at it, the more the blinking seemed to contain a pattern. Something ominous. Something sinister."]),
+            State(Trigger(time=10.0),
+                  ["Maybe it was the whiskey, or not having had anything but coffee since breakfast, but this block was giving me a bad feeling."]),
+            State(Trigger(time=10.0),
+                  ["A feeling like everything is gonna go wrong. Like something is creeping up on me. Like nothing is what it seems."]),
+            State(Trigger(time=10.0),
+                  ["(The whiskey was the breakfast. That probably didn't help.)"]),
+            State(Trigger(time=10.0),
+                  ["Still, I knew that if I wanted to get to the bottom of this, get at the cold, hard truth, I would have to read that block."]),
+            State(Trigger(time=10.0),
+                  ["'Cause no matter how you dress it up, all shiny and blinky and with a star on it, the truth is an ugly thing."]),
+            State(Trigger(time=10.0),
+                  ["And at the end of the day, someone has to scrape off the blinky exterior, look truth in the eye and tell it what's what."]),
+            State(Trigger(time=10.0),
+                  ["Just a shame it had to be me."]),
+            State(Trigger(),
+                  ["(Read the blinking block to advance.)"]),
+          ]
+        ),
   ]
 )
 
@@ -109,21 +143,81 @@ level2 = State(
   [
     State(Trigger(bools=['completed']),
           [State(Trigger(time=4.0), ["This disk is a mess. If I defrag one of the files, maybe it has a program that I can use."]),
-           State(Trigger(time=8.0), ["I just need to put the blocks for one of the files next to each other, in order."]),
-           State(Trigger(time=8.0), ["The block with the star must be the first block of the file."]),
-           State(Trigger(time=8.0), ["Star, then make the light/dark boundary line up."]),
-           State(Trigger(time=8.0), ["I can read two blocks at the same time to speed things up."]),
+           State(Trigger(time=6.0), ["I just need to put the blocks for one of the files next to each other, in order."]),
+           State(Trigger(time=6.0), ["The block with the star must be the first block of the file."]),
+           State(Trigger(time=6.0), ["Star first, then make the light/dark boundary line up."]),
+           State(Trigger(time=6.0), ["I can read two blocks at the same time to speed things up."]),
           ], cycle=True),
     State(Trigger(files=['Sokoban', 'Drive Space']),
           [
-            State(Trigger(time=15.0),
+            State(Trigger(time=10.0),
                   ["Meh, that isn't very useful. Maybe one of the other files has something better."]),
             "Or I can ignore them and just clear up free space."
           ]),
+    State(Trigger(bools=['pre_victory']),
+          [State(Trigger(time=5.0),
+                 ["This will come in handy! Better get back to defragging free space now."]),
+           State(Trigger(time=5.0),
+                 ["This was easier before my hands were covered in blood!"]),
+           State(Trigger(),
+                 ["Good thing I used to be a neurosurgeon."]),
+         ]),
     State(Trigger(bools=['victory']),
-          ["This will come in handy! Better get back to defragging free space now."]),
+          ["I knew it! More hidden data!"]),
     State(Trigger(),
-          ["I knew it! More hidden data! Let's read it!"]),
+          ["This might be the clue I need to find the scum who killed Bob!"]),
+    ]
+  )
+
+
+level3 = State(
+  Trigger(),
+  [
+    State(Trigger(bools=['corruption', 'pre_victory'], files=['Disk Doctor']),
+          [State(Trigger(time=5.0), ["The disk had bad sectors, but it was my only remaining lead."]),
+           State(Trigger(), ["Just have to step carefully around the bad sectors. I can probably read them once, but after that, who knows?"]),
+          ]),
+    State(Trigger(bools=['pre_victory'], files=['Disk Doctor']),
+          [
+            State(Trigger(time=6.0),
+                  ["I was able to read the block, but the strain on the drive damaged nearby sectors. This is bad."]),
+            State(Trigger(time=6.0),
+                  ["Maybe one of the files here has a drive repair program."]),
+          ]),
+    State(Trigger(bools=['pre_victory']),
+          ["Once I had found the Disk Doctor program, bad sectors weren't nearly as big a threat."]),
+    State(Trigger(),
+          ["Bingo! They thought they had covered their tracks, but as an expert cryptoanalyst, I knew better!"]),
+    ]
+  )
+
+
+level4 = State(
+  Trigger(),
+  [
+    State(Trigger(bools=['virus'], files=['Anti Virus']),
+          [State(Trigger(), ["The alien drive contained a weird virus. In all my years as a virologist, I had never seen anything like it."]),
+          ]),
+    State(Trigger(bools=['pre_victory'], files=['Anti Virus']),
+          [
+            State(Trigger(bools=['virus']),
+                  ["Lightning reflexes from my year of training with ninjas saved me from the worst when the virus hit me, but I had to unbuffer all the blocks."],
+                  clear_happened=['virus']),
+            State(Trigger(bools=['virus']),
+                  ["Another close encounter with the alien menace. I have to avoid these or I won't get anywhere with this."],
+                  clear_happened=['virus']),
+            State(Trigger(bools=['virus']),
+                  ["The virus kept hounding me, despite my best attempts at evading it. It must have a fiendishly clever AI controlling it."],
+                  clear_happened=['virus']),
+            State(Trigger(bools=['virus']),
+                  ["If the aliens have viruses, they must have anti-viruses. It's got to be in one of these files."]),
+            State(Trigger(),
+                  ["You really can get used to anything. Still would be nice to find an anti-virus program."]),
+          ]),
+    State(Trigger(bools=['pre_victory']),
+          ["The anti-virus program was clunky, but it still felt good to know part of this drive was on my side."]),
+    State(Trigger(),
+          ["More hidden data! Years doing xenolingustic research finally pay off!"]),
     ]
   )
 
@@ -133,7 +227,9 @@ dummy = State(Trigger(), [""])
 levels = {
   1: level1,
   2: level2,
-  }
+  3: level3,
+  4: level4,
+ }
 
 
 class Tutorial(object):
