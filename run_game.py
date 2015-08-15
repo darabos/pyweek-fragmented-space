@@ -511,12 +511,12 @@ class Note(object):
     notes = [n for n in game.objs if isinstance(n, Note)]
     taken = set(n.position for n in notes)
     phi = math.atan2(toY(self.bj), toX(self.bi)) % (math.pi * 2)
-    files = len(game.files) + 1 # +1 to avoid overlapping bug. (Not fully understood.)
+    files = len(game.files)
     opt = int(files * phi / math.pi / 2)
     for i in range(files):
       o = opt + i
       if o in taken:
-        o = opt - i
+        o = (opt - i) % files
       if o in taken:
         continue
       phi = 2 * math.pi * o / files
