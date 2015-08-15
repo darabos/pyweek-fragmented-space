@@ -31,7 +31,7 @@ def story(text, **kwargs):
   return general_text(text, **kwargs)
 
 def sprite(f, **kwargs):
-  image = pyglet.resource.image(f)
+  image = pyglet.resource.image('images/' + f)
   sprite = pyglet.sprite.Sprite(image, **kwargs)
   sprite.think = lambda dt: None
   image.anchor_x = image.width / 2
@@ -48,14 +48,14 @@ class Player(object):
   walkable = True
 
   def __init__(self, i, j):
-    self.idling = sprite('images/player-idling.png')
-    self.movingleft = sprite('images/player-left.png')
-    self.movingright = sprite('images/player-right.png')
-    self.movingup = sprite('images/player-up.png')
-    self.movingdown = sprite('images/player-down.png')
-    self.lifting = sprite('images/player-lifting.png')
-    self.hurting = sprite('images/player-lifting.png')
-    self.flyingsprite = sprite('images/player-lifting.png')
+    self.idling = sprite('player-idling.png')
+    self.movingleft = sprite('player-left.png')
+    self.movingright = sprite('player-right.png')
+    self.movingup = sprite('player-up.png')
+    self.movingdown = sprite('player-down.png')
+    self.lifting = sprite('player-lifting.png')
+    self.hurting = sprite('player-lifting.png')
+    self.flyingsprite = sprite('player-lifting.png')
 
     self.sprite = self.idling
     self.i = i
@@ -197,7 +197,8 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           game.playsound('win')
-          print 'Level done!'
+          game.objs = []
+          game.add(Cutscene(game.level + 1))
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
@@ -271,7 +272,7 @@ class Corruption(object):
 
   def __init__(self, i, j):
     rnd = random.randrange(5)
-    self.sprite = sprite('images/corruption-{}.png'.format(rnd), batch = game.layers['corruption'])
+    self.sprite = sprite('corruption-{}.png'.format(rnd), batch = game.layers['corruption'])
     self.i = i
     self.j = j
     self.sprite.x = toX(i)
@@ -308,9 +309,9 @@ class Corruption(object):
 
 class Block(object):
   def __init__(self, i, j, file, index, t0):
-    self.inside = sprite('images/block-inside.png', batch = game.layers['blocks-inside'])
+    self.inside = sprite('block-inside.png', batch = game.layers['blocks-inside'])
     self.sprite = self.inside
-    self.outside = sprite('images/block-{}.png'.format(index), batch = game.layers['blocks-outside'])
+    self.outside = sprite('block-{}.png'.format(index), batch = game.layers['blocks-outside'])
     if file:
       self.inside.color = file.color
     self.file = file
@@ -411,7 +412,7 @@ class Virus(object):
   walkable = True
 
   def __init__(self, i, j):
-    self.sprite = sprite('images/virus.png')
+    self.sprite = sprite('virus.png')
     self.i = i
     self.j = j
     self.oi = i
@@ -539,6 +540,50 @@ class Note(object):
       game.objs.remove(self)
 
 
+class Cutscene(object):
+  def __init__(self, level):
+    self.level = level
+    self.image = sprite('story/{}.jpg'.format(level))
+    w = float(self.image.width)
+    h = float(self.image.height)
+    ratio = max(game.window.width / w, game.window.height / h)
+    w = int(w * ratio)
+    h = int(h * ratio)
+    self.image.scale = ratio
+    self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
+
+  def draw(self):
+    self.image.draw()
+
+  def think(self, dt):
+    if not self.sound.playing:
+      game.objs.remove(self)
+      game.level = self.level
+      levels[self.level].make()
+
+
+class Level(object):
+  def __init__(self, files, max_length, corruption, viruses):
+    self.files = files
+    self.max_length = max_length
+    self.corruption = corruption
+    self.viruses = viruses
+
+  def make(self):
+    game.makelevel(self.files, self.max_length, self.corruption, self.viruses)
+    game.tutorial_text = self.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
+
+
+levels = {
+  1: Level(1, 10, 0, 0),
+  2: Level(3, 10, 1, 0),
+  3: Level(4, 10, 2, 1),
+  4: Level(5, 10, 4, 1),
+  5: Level(6, 10, 6, 2),
+  6: Level(7, 10, 10, 4),
+}
+
+
 class Game(object):
   def __init__(self):
     self.objs = []
@@ -596,12 +641,12 @@ class Game(object):
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
+    self.window = window
     self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel(0, 7, 4, 4, 1)
-    self.tutorial_text = self.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
+    self.add(Cutscene(1))
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
     self.timeremaining = self.add(story('100', x = 350, y = 280, font_size = 12, anchor_x = 'right'))
@@ -722,7 +767,7 @@ class Game(object):
     for p in range(start, start + longest):
       if p in corruption:
         continue
-      s = sprite('images/longest-{}.png'.format(self.hundred[p]))
+      s = sprite('longest-{}.png'.format(self.hundred[p]))
       s.x = toX(p % 10)
       s.y = toY(p / 10)
       s.batch = self.layers['longest']
