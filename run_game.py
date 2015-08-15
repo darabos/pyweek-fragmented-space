@@ -1,6 +1,8 @@
 # coding=utf-8
 import collections
+import json
 import math
+import os
 import random
 import pyglet
 from pyglet.graphics import gl
@@ -694,6 +696,7 @@ class Timer(object):
   def __init__(self):
     self.digits = [label('', x = 350 - 12 * i, y = 280, font_size = 16) for i in range(Timer.digits)]
     self.sublabel = story('Zero points if completed. R to restart.', x = 350, y = 240, font_size = 14, anchor_x = 'right')
+    self.score = label('score: {}'.format(game.points), x = 350, y = -280, font_size = 16, anchor_x = 'right')
     self.beeps = min(game.ttl - game.time, 10)
 
   def draw(self):
@@ -703,6 +706,7 @@ class Timer(object):
       l.draw()
     if game.time >= game.ttl:
       self.sublabel.draw()
+    self.score.draw()
 
   def think(self, dt):
     if game.time < game.ttl:
@@ -725,6 +729,8 @@ class Game(object):
   def __init__(self):
     self.objs = []
     self.points = 0
+    self.level = first_level
+    self.load()
     soundnames = 'pickup drop hurt flight corruption reveal win complete uncomplete bounce fail repair beep squish push'.split()
     for f in self.allfiles():
       for i in range(10):
@@ -741,6 +747,18 @@ class Game(object):
         self.sounds[n] = None
     pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
     pyglet.resource.add_font('fonts/Cardo-Regular.ttf')
+
+  def load(self):
+    if os.path.exists('save'):
+      with file('save') as f:
+        j = json.load(f)
+        self.points = j['points']
+        self.level = j['level']
+
+  def save(self):
+    with file('save', 'wb') as f:
+      j = { 'points': self.points, 'level': self.level }
+      json.dump(j, f)
 
   def playsound(self, sound):
     if self.sounds[sound]:
@@ -784,7 +802,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.add(Cutscene(first_level))
+    self.add(Cutscene(self.level))
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
     gl.glClearColor(255, 255, 255, 255)
@@ -825,6 +843,7 @@ class Game(object):
     ]
 
   def makelevel(self, level_number, file_count, max_length, corruption, virus, time_limit):
+    self.save()
     self.level_number = level_number
     self.ttl = self.time + time_limit
     self.tutorial = tutorial.Tutorial(self, level_number)
