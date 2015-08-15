@@ -550,37 +550,48 @@ class Cutscene(object):
     w = int(w * ratio)
     h = int(h * ratio)
     self.image.scale = ratio
-    self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
+    try:
+      self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
+    except:
+      self.sound = None
 
   def draw(self):
     self.image.draw()
 
   def think(self, dt):
-    if not self.sound.playing:
+    complete = False
+    if self.sound is None:
+      if game.keys[key.SPACE]:
+        complete = True
+    else:
+      if not self.sound.playing:
+        complete = True
+    if complete:
       game.objs.remove(self)
       game.level = self.level
       levels[self.level].make()
 
 
 class Level(object):
-  def __init__(self, files, max_length, corruption, viruses):
+  def __init__(self, level_number, files, max_length, corruption, viruses):
+    self.level_number = level_number
     self.files = files
     self.max_length = max_length
     self.corruption = corruption
     self.viruses = viruses
 
   def make(self):
-    game.makelevel(self.files, self.max_length, self.corruption, self.viruses)
-    game.tutorial_text = self.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
+    game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses)
+    game.tutorial_text = game.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
 
 
 levels = {
-  1: Level(1, 10, 0, 0),
-  2: Level(3, 10, 1, 0),
-  3: Level(4, 10, 2, 1),
-  4: Level(5, 10, 4, 1),
-  5: Level(6, 10, 6, 2),
-  6: Level(7, 10, 10, 4),
+  1: Level(1, 1, 10, 0, 0),
+  2: Level(2, 3, 10, 1, 0),
+  3: Level(3, 4, 10, 2, 1),
+  4: Level(4, 5, 10, 4, 1),
+  5: Level(5, 6, 10, 6, 2),
+  6: Level(6, 7, 10, 10, 4),
 }
 
 
@@ -674,7 +685,6 @@ class Game(object):
       self.time += dt
       for o in self.objs[:]:
         o.think(dt)
-      self.tutorial.think(dt)
     pyglet.clock.schedule_interval(update, 1.0 / 70)
     window.push_handlers(self.keys)
     pyglet.app.run()
@@ -693,7 +703,7 @@ class Game(object):
   def makelevel(self, level_number, file_count, max_length, corruption, virus):
     self.level_number = level_number
     self.tutorial = tutorial.Tutorial(self, level_number)
-    self.objs = []
+    self.objs = [self.tutorial]
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100

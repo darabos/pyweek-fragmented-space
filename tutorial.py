@@ -9,3 +9,6 @@ class Tutorial(object):
     if self.base_time > 0:
       self.game.set_tutorial_text(
         'Some help here would be nice.\n\nYeah, definitely.')
+
+  def draw(self):
+    pass
