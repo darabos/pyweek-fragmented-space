@@ -193,6 +193,8 @@ class Player(object):
       b = self.stack.pop()
       game.tutorial.addhappened('dropped')
       b.dropped(i, j)
+      if game.vibrant and not self.stack:
+        game.tutorial.addhappened('victory')
       if game.files['Fast Tracker'].complete and b.file:
         game.playsound(b.file.name + '/' + str(b.index))
       else:
@@ -836,7 +838,7 @@ class Game(object):
       p = start + longest / 2
       b = self.add(Block(p % 10, p / 10, None, 0, game.time))
       b.vibrant = True
-      self.tutorial.addhappened('victory')
+      self.tutorial.addhappened('pre_victory')
       self.vibrant = b
       self.playsound('reveal')
     elif longest < needed and self.vibrant:
