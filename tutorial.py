@@ -82,13 +82,27 @@ level1 = State(
 )
 
 
+level2 = State(
+  Trigger(),
+  ["Whee"],
+  )
+
+
+dummy = State(Trigger(), [""])
+
+levels = {
+  1: level1,
+  2: level2,
+  }
+
+
 class Tutorial(object):
   def __init__(self, game, level_number):
     self.happened = set()
     self.game = game
     self.base_time = 0.0
     self.longest = 0
-    self.active_state = level1
+    self.active_state = levels.get(level_number, dummy)
     self.active_state.reset()
 
   def addhappened(self, event):

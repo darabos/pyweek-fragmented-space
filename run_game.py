@@ -206,6 +206,8 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           game.playsound('win')
+          game.objs.remove(game.tutorial)
+          game.objs.remove(game.tutorial_text)
           game.add(ScoreScreen())
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
@@ -648,7 +650,7 @@ class Level(object):
 
   def make(self):
     game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit)
-    game.tutorial_text = game.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
+    game.tutorial_text = game.add(story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180))
 
 
 levels = {
