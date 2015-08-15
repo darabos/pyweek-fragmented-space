@@ -119,7 +119,7 @@ class Player(object):
         if hasattr(self, 'repairsound'):
           self.repairsound.pause()
           del self.repairsound
-        if game.files['Flight Simulator'].complete and self.lastnospacetime < self.lastspacetime and game.time - self.lastnospacetime < 0.4:
+        if game.files['Flight Simulator'].complete and self.lastnospacetime < self.lastspacetime and game.time - self.lastnospacetime < 0.2:
           # Short tap. Start/stop flying.
           if not self.flying:
             self.flying = game.time
@@ -632,7 +632,7 @@ class Game(object):
       File('Sokoban', 'Walk into blocks to push them.'),
       File('Drive Space', 'Carry any number of blocks.'),
       File('Anti Virus', 'Drop a block on a virus to kill it.'),
-      File('Disk Doctor', 'Press SPACE to repair bad sectors.'),
+      File('Disk Doctor', 'Hold SPACE to repair bad sectors.'),
       File('Extended Partition', 'Move outside the partition.'),
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
