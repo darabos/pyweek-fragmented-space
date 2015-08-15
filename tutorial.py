@@ -1,3 +1,5 @@
+from run_game import story
+
 class Trigger(object):
   def __init__(self, time=None, bools=None, longest=None, files=None):
     self.time = time
@@ -240,7 +242,9 @@ class Tutorial(object):
     self.longest = 0
     self.active_state = levels.get(level_number, dummy)
     self.active_state.reset(self)
+    self.label = story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180)
     self.first = True
+
 
   def addhappened(self, event):
     self.happened.add(event)
@@ -255,8 +259,8 @@ class Tutorial(object):
         completed_files.add(name)
     if self.active_state.advance(
         self, dt, self.happened, self.longest, completed_files) or self.first:
-      self.game.set_tutorial_text(self.active_state.text())
+      self.label.text = self.active_state.text()
     self.first = False
 
   def draw(self):
-    pass
+    self.label.draw()

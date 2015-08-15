@@ -210,8 +210,10 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           game.playsound('win')
-          game.objs.remove(game.tutorial)
-          game.objs.remove(game.tutorial_text)
+          game.objs = [o for o in game.objs if not isinstance(o, Timer) and o is not game.tutorial]
+          for o in game.objs:
+            if isinstance(o, Note):
+              o.delete()
           game.add(ScoreScreen())
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
@@ -691,7 +693,6 @@ class Level(object):
 
   def make(self):
     game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit, **self.kwargs)
-    game.tutorial_text = game.add(story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180))
 
 
 levels = {
@@ -751,12 +752,63 @@ class Holder(object):
     pass
 
 
+class MainMenu(object):
+  def __init__(self):
+    self.t0 = game.time
+    self.sprites = [sprite('longest-{}.png'.format(i % 7), batch = game.layers['corruption']) for i in range(20)]
+    for s in self.sprites:
+      s.color = 0, 0, 0
+      s.opacity = random.randrange(128, 256)
+      s.startx = random.randint(-150, 150)
+    self.title = label('Fragmented Space', y = 150)
+    self.subtitle = story('A game of my life on a platter', y = 90)
+    self.load = label('Continue', x = -100, y = -100, anchor_x = 'left', font_size = 16)
+    self.new = label('New game', x = -100, y = -160, anchor_x = 'left', font_size = 16)
+    self.cursor = sprite('longest-0.png', x = -120)
+    self.cursor.color = 0, 0, 0
+    self.selection = 'continue'
+    self.think(0)
+
+  def draw(self):
+    self.title.draw()
+    self.subtitle.draw()
+    self.load.draw()
+    self.new.draw()
+    self.cursor.draw()
+
+  def think(self, dt):
+    p = game.time - self.t0
+    def delay(i):
+      return int(max(0, min(255, 50 * (p - i))))
+    self.title.color = 0, 0, 0, delay(0)
+    self.subtitle.color = 0, 0, 0, delay(1)
+    self.load.color = 0, 0, 0, delay(1.5)
+    self.new.color = 0, 0, 0, delay(2)
+    p *= 0.3
+    for s in self.sprites:
+      s.y = int(400 - s.opacity * p)
+      s.x = s.startx * p + 10 * math.sin(0.05 * s.y)
+      s.rotation = -5 * math.sin(0.05 * s.y)
+    if game.keys[key.SPACE] or game.keys[key.ENTER]:
+      if self.selection == 'continue':
+        game.load()
+      game.objs = []
+      game.add(Cutscene(game.level))
+    elif game.keys[key.UP]:
+      self.selection = 'continue'
+    elif game.keys[key.DOWN]:
+      self.selection = 'new game'
+    if self.selection == 'continue':
+      self.cursor.y = -100
+    elif self.selection == 'new game':
+      self.cursor.y = -160
+
+
 class Game(object):
   def __init__(self):
     self.objs = []
     self.points = 0
     self.level = first_level
-    self.load()
     soundnames = 'pickup drop hurt flight corruption reveal win complete uncomplete bounce fail repair beep squish push'.split()
     for f in self.allfiles():
       for i in range(10):
@@ -817,9 +869,6 @@ class Game(object):
     else:
       return 'wall'
 
-  def set_tutorial_text(self, text):
-    self.tutorial_text.text = text
-
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
@@ -828,9 +877,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.add(Cutscene(self.level))
-#    self.add(label('Fragmented Space', x = 0, y = 250))
-#    self.add(story('A game of my life on a platter', x = 0, y = 190))
+    self.add(MainMenu())
     gl.glClearColor(255, 255, 255, 255)
     gl.glEnable(gl.GL_LINE_SMOOTH);
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
@@ -872,8 +919,8 @@ class Game(object):
     self.save()
     self.level_number = level_number
     self.ttl = self.time + time_limit
-    self.tutorial = tutorial.Tutorial(self, level_number)
-    self.objs = [self.tutorial]
+    self.objs = []
+    self.tutorial = self.add(tutorial.Tutorial(self, level_number))
     self.add(Timer())
     self.add(Holder('marks'))
     self.player = self.add(Player(0, 0))
