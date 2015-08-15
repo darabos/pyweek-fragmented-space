@@ -634,6 +634,7 @@ class Note(object):
 
 class Cutscene(object):
   def __init__(self, level):
+    self.t0 = game.time
     self.level = level
     if level > last_level + 1: # Plus epilogue.
       self.image = None
@@ -642,10 +643,7 @@ class Cutscene(object):
       self.image = sprite('story/{}.jpg'.format(level))
       w = float(self.image.width)
       h = float(self.image.height)
-      ratio = max(game.window.width / w, game.window.height / h)
-      w = int(w * ratio)
-      h = int(h * ratio)
-      self.image.scale = ratio
+      self.ratio = max(game.window.width / w, game.window.height / h)
       try:
         self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
       except:
@@ -654,15 +652,29 @@ class Cutscene(object):
 
   def draw(self):
     if self.image:
+      if hasattr(self, 'ttl'):
+        p = self.ttl - game.time
+      elif game.time < self.t0 + 1:
+        p = game.time - self.t0
+      else:
+        p = 1
+      p *= p
+      self.image.opacity = 255 * p
+      self.image.scale = self.ratio * (2 - p)
+      self.image.rotation = 10 * (1 - p)
       self.image.draw()
 
   def think(self, dt):
+    if hasattr(self, 'ttl'):
+      if self.ttl < game.time:
+        game.objs.remove(self)
+        game.level = self.level
+        levels[min(last_level, self.level)].make()
+      return
     if not game.keys[key.SPACE]:
       self.primed = True
     if self.sound and not self.sound.playing or self.primed and game.keys[key.SPACE] or self.image is None:
-      game.objs.remove(self)
-      game.level = self.level
-      levels[min(last_level, self.level)].make()
+      self.ttl = game.time + 1
 
 
 class Level(object):
