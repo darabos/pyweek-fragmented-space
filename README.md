@@ -41,8 +41,8 @@ HOW TO PLAY THE GAME
 --------------------
 
 Move with the arrow keys. Use SPACE to interact. Press R to restart the level.
-The level you've reached and the score you've collected are automatically
-saved in a file called "save". Delete this to restart.
+Press F to toggle full-screen mode. The level you've reached and the score
+you've collected are automatically saved in a file called "save".
 
 Your goal is to defragment a hard drive. The longest run of free space is
 marked. You can pass the level if this is at least 75% of the total free
