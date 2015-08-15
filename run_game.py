@@ -616,29 +616,34 @@ class Note(object):
 class Cutscene(object):
   def __init__(self, level):
     self.level = level
-    self.image = sprite('story/{}.jpg'.format(level))
-    w = float(self.image.width)
-    h = float(self.image.height)
-    ratio = max(game.window.width / w, game.window.height / h)
-    w = int(w * ratio)
-    h = int(h * ratio)
-    self.image.scale = ratio
-    try:
-      self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
-    except:
+    if level > last_level + 1: # Plus epilogue.
+      self.image = None
       self.sound = None
+    else:
+      self.image = sprite('story/{}.jpg'.format(level))
+      w = float(self.image.width)
+      h = float(self.image.height)
+      ratio = max(game.window.width / w, game.window.height / h)
+      w = int(w * ratio)
+      h = int(h * ratio)
+      self.image.scale = ratio
+      try:
+        self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
+      except:
+        self.sound = None
     self.primed = False
 
   def draw(self):
-    self.image.draw()
+    if self.image:
+      self.image.draw()
 
   def think(self, dt):
     if not game.keys[key.SPACE]:
       self.primed = True
-    if self.sound and not self.sound.playing or self.primed and game.keys[key.SPACE]:
+    if self.sound and not self.sound.playing or self.primed and game.keys[key.SPACE] or self.image is None:
       game.objs.remove(self)
       game.level = self.level
-      levels[self.level].make()
+      levels[min(last_level, self.level)].make()
 
 
 class Level(object):
@@ -663,6 +668,8 @@ levels = {
   5: Level(5, 6, 10, 6, 2, 200),
   6: Level(6, 7, 10, 10, 4, 300),
 }
+first_level = min(levels.keys())
+last_level = max(levels.keys())
 
 
 class Game(object):
@@ -728,7 +735,7 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.add(Cutscene(1))
+    self.add(Cutscene(first_level))
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
     gl.glClearColor(255, 255, 255, 255)
