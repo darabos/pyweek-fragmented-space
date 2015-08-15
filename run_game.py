@@ -678,23 +678,24 @@ class Cutscene(object):
 
 
 class Level(object):
-  def __init__(self, level_number, files, max_length, corruption, viruses, time_limit):
+  def __init__(self, level_number, files, max_length, corruption, viruses, time_limit, **kwargs):
     self.level_number = level_number
     self.files = files
     self.max_length = max_length
     self.corruption = corruption
     self.viruses = viruses
     self.time_limit = time_limit
+    self.kwargs = kwargs
 
   def make(self):
-    game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit)
+    game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit, **self.kwargs)
     game.tutorial_text = game.add(story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180))
 
 
 levels = {
-  1: Level(1, 1, 2, 0, 0, 0),
-  2: Level(2, 3, 10, 1, 0, 100),
-  3: Level(3, 4, 10, 2, 1, 100),
+  1: Level(1, 1, 4, 0, 0, 0, non_random_lengths=True, only_center=True),
+  2: Level(2, 3, 10, 0, 0, 100),
+  3: Level(3, 4, 10, 2, 0, 100),
   4: Level(4, 5, 10, 4, 1, 100),
   5: Level(5, 6, 10, 6, 2, 200),
   6: Level(6, 7, 10, 10, 4, 300),
@@ -865,7 +866,7 @@ class Game(object):
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
 
-  def makelevel(self, level_number, file_count, max_length, corruption, virus, time_limit):
+  def makelevel(self, level_number, file_count, max_length, corruption, virus, time_limit, non_random_lengths=False, only_center=False):
     self.save()
     self.level_number = level_number
     self.ttl = self.time + time_limit
@@ -890,16 +891,23 @@ class Game(object):
       hx(0xfff6d5), # light grey
       hx(0x99aa77), # dark grey
       ]
-    lengths = [random.randint(2, max_length) for f in files]
+    if non_random_lengths:
+      lengths = [max_length for f in files]
+    else:
+      lengths = [random.randint(2, max_length) for f in files]
     for f, c, l in zip(files, colors, lengths):
       f.color = c
       f.count = l
     files = files[:file_count]
+    if only_center:
+      random_coordinate = lambda: 2 + random.randrange(6)
+    else:
+      random_coordinate = lambda: random.randrange(10)
     for f in files:
       for a in range(f.count):
-        i, j = random.randrange(10), random.randrange(10)
+        i, j = random_coordinate(), random_coordinate()
         while self.grid(i, j) != 'free':
-          i, j = random.randrange(10), random.randrange(10)
+          i, j = random_coordinate(), random_coordinate()
         self.add(Block(i, j, f, a, game.time + j * 0.03))
     for a in range(virus):
       i, j = random.randrange(10), random.randrange(10)
