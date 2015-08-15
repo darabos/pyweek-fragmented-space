@@ -737,6 +737,17 @@ class Timer(object):
       levels[game.level].make()
 
 
+class Holder(object):
+  def __init__(self, name):
+    self.name = name
+
+  def draw(self):
+    pass
+
+  def think(self, dt):
+    pass
+
+
 class Game(object):
   def __init__(self):
     self.objs = []
@@ -861,6 +872,7 @@ class Game(object):
     self.tutorial = tutorial.Tutorial(self, level_number)
     self.objs = [self.tutorial]
     self.add(Timer())
+    self.add(Holder('marks'))
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
@@ -933,7 +945,7 @@ class Game(object):
     corruption = [o for o in self.objs if isinstance(o, Corruption)]
     corruption = set(o.i + 10 * o.j for o in corruption)
     self.longest_length = longest
-    self.longest = []
+    marks = []
     for p in range(start, start + longest):
       if p in corruption:
         continue
@@ -946,7 +958,11 @@ class Game(object):
       else:
         s.color = 0, 0, 0
       s.opacity = 40
-      self.longest.append(s)
+      marks.append(s)
+    # We want the marks to disappear when game.objs is emptied.
+    # So we need to reference these sprites exclusively from objs.
+    # That's why it's a little awkward to access them.
+    [o for o in self.objs if isinstance(o, Holder) and o.name == 'marks'][0].sprites = marks
 
 if __name__ == '__main__':
   game = Game()
