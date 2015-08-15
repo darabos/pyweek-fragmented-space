@@ -7,7 +7,6 @@ from pyglet.graphics import gl
 from pyglet.window import key
 
 def label(text, **kwargs):
-  pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
   kwargs.setdefault('font_name', 'Montserrat')
   kwargs.setdefault('font_size', 36)
   kwargs.setdefault('anchor_x', 'center')
@@ -20,7 +19,6 @@ def label(text, **kwargs):
   return label
 
 def story(text, **kwargs):
-  pyglet.resource.add_font('fonts/Cardo-Regular.ttf')
   kwargs.setdefault('font_name', 'Cardo')
   kwargs.setdefault('font_size', 18)
   return label(text, **kwargs)
@@ -549,6 +547,10 @@ class Game(object):
         # files), but really, whatever goes wrong, just ignore it and
         # keep going without that sound.
         self.sounds[n] = None
+    pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
+    pyglet.font.load('Montserrat')
+    pyglet.resource.add_font('fonts/Cardo-Regular.ttf')
+    pyglet.font.load('Cardo')
 
   def playsound(self, sound):
     if self.sounds[sound]:
