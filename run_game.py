@@ -6,9 +6,7 @@ import pyglet
 from pyglet.graphics import gl
 from pyglet.window import key
 
-def label(text, **kwargs):
-  kwargs.setdefault('font_name', 'Montserrat')
-  kwargs.setdefault('font_size', 36)
+def general_text(text, **kwargs):
   kwargs.setdefault('anchor_x', 'center')
   kwargs.setdefault('anchor_y', 'center')
   kwargs.setdefault('color', (0, 0, 0, 255))
@@ -18,10 +16,16 @@ def label(text, **kwargs):
   label.think = lambda dt: None
   return label
 
+def label(text, **kwargs):
+  kwargs.setdefault('font_name', 'Montserrat')
+  kwargs.setdefault('font_size', 36)
+  kwargs.setdefault('bold', True)
+  return general_text(text, **kwargs)
+
 def story(text, **kwargs):
   kwargs.setdefault('font_name', 'Cardo')
   kwargs.setdefault('font_size', 18)
-  return label(text, **kwargs)
+  return general_text(text, **kwargs)
 
 def sprite(f, **kwargs):
   image = pyglet.resource.image(f)
@@ -483,6 +487,8 @@ class Note(object):
     self.bi = i
     self.bj = j
     self.position, self.x, self.y = self.pickposition()
+    self.x = int(self.x)
+    self.y = int(self.y)
     self.opacity = 191
     self.text1 = label(text1, x = self.x, y = self.y + 16, font_size = 16, color = (0, 0, 0, self.opacity))
     self.text2 = story(text2, x = self.x, y = self.y - 12, font_size = 10, color = (0, 0, 0, self.opacity))
@@ -548,9 +554,7 @@ class Game(object):
         # keep going without that sound.
         self.sounds[n] = None
     pyglet.resource.add_font('fonts/Montserrat-Bold.ttf')
-    pyglet.font.load('Montserrat')
     pyglet.resource.add_font('fonts/Cardo-Regular.ttf')
-    pyglet.font.load('Cardo')
 
   def playsound(self, sound):
     if self.sounds[sound]:
