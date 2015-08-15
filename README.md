@@ -57,6 +57,12 @@ in the direction of the block to pick it up. Do the same in the direction of
 an empty spot to drop a block you are carrying. SPACE is also used with
 abilities. The ability description will tell you how.
 
+There are two hazards lurking on the surface of the hard drive. Viruses run
+around randomly and bump into you, causing you to drop everything in your
+hands. You cannot write to (put down blocks on) bad sectors. Reading (picking
+up) from bad sectors works, but it causes the neighboring sectors to go bad as
+well.
+
 If there are no more cutscenes between levels, you have beaten the game and
 are now in infinite play mode. Press ESC to quit the game.
 
