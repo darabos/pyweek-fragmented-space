@@ -156,11 +156,18 @@ class Player(object):
       self.sprite.y += int(math.sin((game.time - self.flying) * 10) * 6) + 6
 
   def move(self, di, dj):
+    if di or dj:
+      game.tutorial.addhappened('moved')
     b = game.grid(self.i + di, self.j + dj)
     if b == 'free' or getattr(b, 'walkable', False) or game.files['Extended Partition'].complete and b == 'wall' or self.flying and b != 'wall':
       self.i += di
       self.j += dj
       self.z = -self.j + 10
+
+      # Check if we ended up next to a block:
+      for ddi, ddj in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        if isinstance(game.grid(self.i + ddi, self.j + ddj), Block):
+          game.tutorial.addhappened('next_to_block')
     elif game.files['Sokoban'].complete and isinstance(b, Block) and game.grid(self.i + 2 * di, self.j + 2 * dj) == 'free':
       game.playsound('push')
       b.i += di
@@ -178,11 +185,13 @@ class Player(object):
     self.phase = self.steptime
 
   def lift(self, di, dj):
+    game.tutorial.addhappened('lifted')
     i = self.i + di
     j = self.j + dj
     b = game.grid(i, j)
     if b == 'free' and self.stack:
       b = self.stack.pop()
+      game.tutorial.addhappened('dropped')
       b.dropped(i, j)
       if game.files['Fast Tracker'].complete and b.file:
         game.playsound(b.file.name + '/' + str(b.index))
@@ -381,6 +390,7 @@ class Block(object):
         self.file.complete = False
         break
     else:
+      game.tutorial.addhappened('completed')
       self.file.complete = True
 
   def think(self, dt):
