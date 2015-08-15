@@ -771,10 +771,12 @@ class Game(object):
           start = last + 1
         last = p
     needed = (100 - len(blocks)) * 3 / 4
+    self.tutorial.setlongest(longest)
     if longest >= needed and not self.vibrant:
       p = start + longest / 2
       b = self.add(Block(p % 10, p / 10, None, 0, game.time))
       b.vibrant = True
+      self.tutorial.addhappened('victory')
       self.vibrant = b
       self.playsound('reveal')
     elif longest < needed and self.vibrant:
