@@ -212,7 +212,6 @@ class Player(object):
           game.playsound('win')
           game.objs = [o for o in game.objs if not isinstance(o, Timer)]
           game.objs.remove(game.tutorial)
-          game.objs.remove(game.tutorial_text)
           game.add(ScoreScreen())
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
@@ -690,7 +689,6 @@ class Level(object):
 
   def make(self):
     game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit, **self.kwargs)
-    game.tutorial_text = game.add(story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180))
 
 
 levels = {
@@ -867,9 +865,6 @@ class Game(object):
     else:
       return 'wall'
 
-  def set_tutorial_text(self, text):
-    self.tutorial_text.text = text
-
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
@@ -920,8 +915,8 @@ class Game(object):
     self.save()
     self.level_number = level_number
     self.ttl = self.time + time_limit
-    self.tutorial = tutorial.Tutorial(self, level_number)
-    self.objs = [self.tutorial]
+    self.objs = []
+    self.tutorial = self.add(tutorial.Tutorial(self, level_number))
     self.add(Timer())
     self.add(Holder('marks'))
     self.player = self.add(Player(0, 0))
