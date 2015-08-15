@@ -219,7 +219,7 @@ level4 = State(
     State(Trigger(bools=['pre_victory']),
           ["The anti-virus program was clunky, but it still felt good to know part of this drive was on my side."]),
     State(Trigger(),
-          ["More hidden data! Years doing xenolingustic research finally pay off!"]),
+          ["More hidden data! The years I spent on xenolingustic research finally pay off!"]),
     ]
   )
 
