@@ -206,8 +206,7 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           game.playsound('win')
-          game.objs = []
-          game.add(Cutscene(game.level + 1))
+          game.add(ScoreScreen())
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
@@ -274,6 +273,66 @@ class Tip(object):
     self.label.y = int(self.y0 + 300 * (game.time - self.t0) ** 4)
     if self.t0 + self.ttl < game.time:
       game.objs.remove(self)
+
+
+class ScoreScreen(object):
+  def __init__(self):
+    self.t0 = game.time
+    labels = [
+      'LEVEL {} COMPLETE'.format(game.level),
+      '',
+      'Time remaining:',
+      'Longest free area:',
+      'Files assembled:',
+    ]
+    points = [0, 0, int(game.ttl - game.time), game.longest_length, 0]
+    completed = [f for f in game.files.values() if f.complete]
+    if not completed:
+      labels.append('    none')
+      points.append(0)
+    else:
+      for f in completed:
+        labels.append('    {}:'.format(f.name))
+        points.append(f.count * 10)
+    labels += [
+      'TOTAL:',
+      '',
+      'Press SPACE to proceed',
+    ]
+    total = sum(points)
+    game.points += total
+    points += [total, 0, 0]
+    self.labels = []
+    y = 250
+    for l, p in zip(labels, points):
+      y -= 30
+      if l:
+        l = label(l, anchor_x = 'left', anchor_y = 'baseline', font_size = 20)
+        l.x = -250
+        l.y = y
+        self.labels.append(l)
+      if p:
+        l = label(str(p), anchor_x = 'right', anchor_y = 'baseline', font_size = 25)
+        l.x = 250
+        l.y = y
+        self.labels.append(l)
+    self.primed = False
+
+  def draw(self):
+    t = 5.0 * (game.time - self.t0)
+    for i, l in enumerate(self.labels):
+      i *= 2
+      if i + 1 < t:
+        l.draw()
+      elif i < t and (t - i) % 0.5 < 0.2:
+        l.draw()
+
+  def think(self, dt):
+    if not game.keys[key.SPACE]:
+      self.primed = True
+    if self.primed and game.keys[key.SPACE]:
+      game.objs = []
+      game.add(Cutscene(game.level + 1))
 
 
 class Corruption(object):
@@ -564,50 +623,48 @@ class Cutscene(object):
       self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
     except:
       self.sound = None
+    self.primed = False
 
   def draw(self):
     self.image.draw()
 
   def think(self, dt):
-    complete = False
-    if self.sound is None:
-      if game.keys[key.SPACE]:
-        complete = True
-    else:
-      if not self.sound.playing:
-        complete = True
-    if complete:
+    if not game.keys[key.SPACE]:
+      self.primed = True
+    if self.sound and not self.sound.playing or self.primed and game.keys[key.SPACE]:
       game.objs.remove(self)
       game.level = self.level
       levels[self.level].make()
 
 
 class Level(object):
-  def __init__(self, level_number, files, max_length, corruption, viruses):
+  def __init__(self, level_number, files, max_length, corruption, viruses, time_limit):
     self.level_number = level_number
     self.files = files
     self.max_length = max_length
     self.corruption = corruption
     self.viruses = viruses
+    self.time_limit = time_limit
 
   def make(self):
-    game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses)
+    game.makelevel(self.level_number, self.files, self.max_length, self.corruption, self.viruses, self.time_limit)
     game.tutorial_text = game.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
 
 
 levels = {
-  1: Level(1, 1, 10, 0, 0),
-  2: Level(2, 3, 10, 1, 0),
-  3: Level(3, 4, 10, 2, 1),
-  4: Level(4, 5, 10, 4, 1),
-  5: Level(5, 6, 10, 6, 2),
-  6: Level(6, 7, 10, 10, 4),
+  1: Level(1, 1, 2, 0, 0, 3000),
+  2: Level(2, 3, 10, 1, 0, 100),
+  3: Level(3, 4, 10, 2, 1, 100),
+  4: Level(4, 5, 10, 4, 1, 100),
+  5: Level(5, 6, 10, 6, 2, 200),
+  6: Level(6, 7, 10, 10, 4, 300),
 }
 
 
 class Game(object):
   def __init__(self):
     self.objs = []
+    self.points = 0
     soundnames = 'pickup drop hurt flight corruption reveal win complete uncomplete bounce fail repair beep squish push'.split()
     for f in self.allfiles():
       for i in range(10):
@@ -670,14 +727,13 @@ class Game(object):
     self.add(Cutscene(1))
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
-    self.timeremaining = self.add(story('100', x = 350, y = 280, font_size = 12, anchor_x = 'right'))
-    self.t0 = self.time
     gl.glClearColor(255, 255, 255, 255)
     gl.glEnable(gl.GL_LINE_SMOOTH);
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
     @window.event
     def on_draw():
-      self.timeremaining.text = '{:.1f}'.format(100 + self.t0 - self.time)
+      if hasattr(self, 'timeremaining'):
+        self.timeremaining.text = '{:.1f}'.format(self.ttl - self.time)
       window.clear()
       gl.glLoadIdentity()
       gl.glTranslatef(window.width / 2, window.height / 2, 0)
@@ -710,10 +766,12 @@ class Game(object):
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
 
-  def makelevel(self, level_number, file_count, max_length, corruption, virus):
+  def makelevel(self, level_number, file_count, max_length, corruption, virus, time_limit):
     self.level_number = level_number
     self.tutorial = tutorial.Tutorial(self, level_number)
     self.objs = [self.tutorial]
+    self.timeremaining = self.add(story(str(time_limit), x = -350, y = 280, font_size = 12, anchor_x = 'right'))
+    self.ttl = self.time + time_limit
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
@@ -785,6 +843,7 @@ class Game(object):
 
     corruption = [o for o in self.objs if isinstance(o, Corruption)]
     corruption = set(o.i + 10 * o.j for o in corruption)
+    self.longest_length = longest
     self.longest = []
     for p in range(start, start + longest):
       if p in corruption:
