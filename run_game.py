@@ -282,30 +282,47 @@ class Tip(object):
 class ScoreScreen(object):
   def __init__(self):
     self.t0 = game.time
-    labels = [
-      'LEVEL {} COMPLETE'.format(game.level),
-      '',
-      'Time remaining:',
-      'Longest free area:',
-      'Files assembled:',
-    ]
-    points = [0, 0, int(game.ttl - game.time), game.longest_length, 0]
-    completed = [f for f in game.files.values() if f.complete]
-    if not completed:
-      labels.append('    none')
-      points.append(0)
+    if game.time < game.ttl:
+      labels = [
+        'LEVEL {} COMPLETE'.format(game.level),
+        '',
+        'Time remaining:',
+        'Longest free area:',
+        'Files assembled:',
+      ]
+      points = [0, 0, int(game.ttl - game.time), game.longest_length, 0]
+      completed = [f for f in game.files.values() if f.complete]
+      if not completed:
+        labels.append('    none')
+        points.append(0)
+      else:
+        for f in completed:
+          labels.append('    {}:'.format(f.name))
+          points.append(f.count * 10)
+      labels += [
+        'TOTAL:',
+        '',
+        'Press SPACE to proceed',
+      ]
+      total = sum(points)
+      game.points += total
+      points += [total, 0, 0]
+    elif game.level == 1:
+      labels = [
+        'LEVEL {} COMPLETE'.format(game.level),
+        '',
+        'Press SPACE to proceed',
+        ]
+      points = [0] * len(labels)
     else:
-      for f in completed:
-        labels.append('    {}:'.format(f.name))
-        points.append(f.count * 10)
-    labels += [
-      'TOTAL:',
-      '',
-      'Press SPACE to proceed',
-    ]
-    total = sum(points)
-    game.points += total
-    points += [total, 0, 0]
+      labels = [
+        'LEVEL {} COMPLETE'.format(game.level),
+        '',
+        'Out of time. No points awarded.',
+        '',
+        'Press SPACE to proceed or R to try again.',
+        ]
+      points = [0] * len(labels)
     self.labels = []
     y = 250
     for l, p in zip(labels, points):
@@ -661,7 +678,7 @@ class Level(object):
 
 
 levels = {
-  1: Level(1, 1, 2, 0, 0, 3000),
+  1: Level(1, 1, 2, 0, 0, 0),
   2: Level(2, 3, 10, 1, 0, 100),
   3: Level(3, 4, 10, 2, 1, 100),
   4: Level(4, 5, 10, 4, 1, 100),
@@ -670,6 +687,38 @@ levels = {
 }
 first_level = min(levels.keys())
 last_level = max(levels.keys())
+
+
+class Timer(object):
+  digits = 5
+  def __init__(self):
+    self.digits = [label('', x = 350 - 12 * i, y = 280, font_size = 16) for i in range(Timer.digits)]
+    self.sublabel = story('Zero points if completed. R to restart.', x = 350, y = 240, font_size = 14, anchor_x = 'right')
+    self.beeps = min(game.ttl - game.time, 10)
+
+  def draw(self):
+    if game.level == 1:
+      return # Hide timer on first level.
+    for l in self.digits:
+      l.draw()
+    if game.time >= game.ttl:
+      self.sublabel.draw()
+
+  def think(self, dt):
+    if game.time < game.ttl:
+      text = ' ' * Timer.digits + '{:.1f}'.format(game.ttl - game.time)
+      for c, l in zip(reversed(text), self.digits):
+        l.text = c
+      if game.ttl - game.time < self.beeps:
+        game.playsound('beep')
+        self.beeps -= 1
+    else:
+      self.digits[0].anchor_x = 'right'
+      self.digits[0].text = 'OUT OF TIME'
+      for l in self.digits[1:]:
+        l.text = ''
+    if game.keys[key.R]:
+      levels[game.level].make()
 
 
 class Game(object):
@@ -743,8 +792,6 @@ class Game(object):
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
     @window.event
     def on_draw():
-      if hasattr(self, 'timeremaining'):
-        self.timeremaining.text = '{:.1f}'.format(self.ttl - self.time)
       window.clear()
       gl.glLoadIdentity()
       gl.glTranslatef(window.width / 2, window.height / 2, 0)
@@ -779,10 +826,10 @@ class Game(object):
 
   def makelevel(self, level_number, file_count, max_length, corruption, virus, time_limit):
     self.level_number = level_number
+    self.ttl = self.time + time_limit
     self.tutorial = tutorial.Tutorial(self, level_number)
     self.objs = [self.tutorial]
-    self.timeremaining = self.add(story(str(time_limit), x = -350, y = 280, font_size = 12, anchor_x = 'right'))
-    self.ttl = self.time + time_limit
+    self.add(Timer())
     self.player = self.add(Player(0, 0))
     def hx(x):
       return x / 0x100 / 0x100 % 0x100, x / 0x100 % 0x100, x % 0x100
