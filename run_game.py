@@ -879,7 +879,7 @@ class Game(object):
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
     self.add(MainMenu())
     background = sprite('background.png')
-    gl.glClearColor(255, 255, 255, 255)
+    gl.glClearColor(247 / 255.0, 251 / 255.0, 1, 1)
     gl.glEnable(gl.GL_LINE_SMOOTH);
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
     @window.event
