@@ -210,8 +210,7 @@ class Player(object):
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
           game.playsound('win')
-          game.objs = [o for o in game.objs if not isinstance(o, Timer)]
-          game.objs.remove(game.tutorial)
+          game.objs = [o for o in game.objs if not isinstance(o, Timer) and o is not game.tutorial]
           game.add(ScoreScreen())
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
