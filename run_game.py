@@ -34,10 +34,10 @@ def story(text, **kwargs):
 
 def sprite(f, **kwargs):
   image = pyglet.resource.image('images/' + f)
-  sprite = pyglet.sprite.Sprite(image, **kwargs)
-  sprite.think = lambda dt: None
   image.anchor_x = image.width / 2
   image.anchor_y = image.height / 2
+  sprite = pyglet.sprite.Sprite(image, **kwargs)
+  sprite.think = lambda dt: None
   return sprite
 
 def toX(i):
@@ -878,6 +878,7 @@ class Game(object):
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
     self.add(MainMenu())
+    background = sprite('background.png')
     gl.glClearColor(255, 255, 255, 255)
     gl.glEnable(gl.GL_LINE_SMOOTH);
     gl.glHint(gl.GL_LINE_SMOOTH_HINT, gl.GL_NICEST);
@@ -886,6 +887,7 @@ class Game(object):
       window.clear()
       gl.glLoadIdentity()
       gl.glTranslatef(window.width / 2, window.height / 2, 0)
+      background.draw()
       for l in ['corruption', 'longest', 'blocks-inside', 'blocks-outside']:
         self.layers[l].draw()
       self.objs.sort(key=lambda o: o.z if hasattr(o, 'z') else 100)
