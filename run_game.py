@@ -539,10 +539,25 @@ class Game(object):
     for f in self.allfiles():
       for i in range(10):
         soundnames.append(f.name + '/' + str(i))
-    self.sounds = dict((f, pyglet.resource.media('sounds/{}.ogg'.format(f), streaming = False)) for f in soundnames)
+    self.sounds = {}
+    for n in soundnames:
+      try:
+        self.sounds[n] = pyglet.resource.media('sounds/{}.ogg'.format(n), streaming = False)
+      except:
+        # We primarily expect a pyglet.media.riff.WAVEFormatException
+        # here if avbin isn't installed (and thus we can't load .ogg
+        # files), but really, whatever goes wrong, just ignore it and
+        # keep going without that sound.
+        self.sounds[n] = None
 
   def playsound(self, sound):
-    return self.sounds[sound].play()
+    if self.sounds[sound]:
+      return self.sounds[sound].play()
+    else:
+      class FakeSound(object):
+        def pause(self):
+          pass
+      return FakeSound()
 
   def add(self, o):
     self.objs.append(o)
