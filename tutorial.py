@@ -146,7 +146,7 @@ class Tutorial(object):
     self.longest = 0
     self.active_state = levels.get(level_number, dummy)
     self.active_state.reset(self)
-    self.label = game.add(story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180))
+    self.label = story('', x=-380, y=240, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=180)
     self.first = True
 
 
