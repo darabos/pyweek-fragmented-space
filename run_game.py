@@ -6,6 +6,9 @@ import pyglet
 from pyglet.graphics import gl
 from pyglet.window import key
 
+import tutorial
+
+
 def general_text(text, **kwargs):
   kwargs.setdefault('anchor_x', 'center')
   kwargs.setdefault('anchor_y', 'center')
@@ -587,6 +590,9 @@ class Game(object):
     else:
       return 'wall'
 
+  def set_tutorial_text(self, text):
+    self.tutorial_text.text = text
+
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
@@ -594,10 +600,11 @@ class Game(object):
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
     window.set_icon(pyglet.resource.image('images/player-lifting.png'))
-    self.makelevel(7, 4, 4, 1)
+    self.makelevel(0, 7, 4, 4, 1)
+    self.tutorial_text = self.add(story('', x=-350, y=260, font_size=14, anchor_x='left', anchor_y='top', multiline=True, width=150))
 #    self.add(label('Fragmented Space', x = 0, y = 250))
 #    self.add(story('A game of my life on a platter', x = 0, y = 190))
-    self.timeremaining = self.add(story('100', x = -350, y = 280, font_size = 12, anchor_x = 'left'))
+    self.timeremaining = self.add(story('100', x = 350, y = 280, font_size = 12, anchor_x = 'right'))
     self.t0 = self.time
     gl.glClearColor(255, 255, 255, 255)
     gl.glEnable(gl.GL_LINE_SMOOTH);
@@ -622,6 +629,7 @@ class Game(object):
       self.time += dt
       for o in self.objs[:]:
         o.think(dt)
+      self.tutorial.think(dt)
     pyglet.clock.schedule_interval(update, 1.0 / 70)
     window.push_handlers(self.keys)
     pyglet.app.run()
@@ -637,7 +645,9 @@ class Game(object):
       File('Flight Simulator', 'Tap SPACE to lift off or land.'),
     ]
 
-  def makelevel(self, file_count, max_length, corruption, virus):
+  def makelevel(self, level_number, file_count, max_length, corruption, virus):
+    self.level_number = level_number
+    self.tutorial = tutorial.Tutorial(self, level_number)
     self.objs = []
     self.player = self.add(Player(0, 0))
     def hx(x):
