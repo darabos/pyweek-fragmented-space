@@ -651,7 +651,7 @@ class Cutscene(object):
   def __init__(self, level):
     self.t0 = game.time
     self.level = level
-    if hasattr(game, 'lastcutscenesound'):
+    if getattr(game, 'lastcutscenesound', None):
       game.lastcutscenesound.pause()
     if level > last_level + 1: # Plus epilogue.
       self.image = None
