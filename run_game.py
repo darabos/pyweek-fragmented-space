@@ -670,9 +670,10 @@ class Cutscene(object):
       self.ratio = max(game.window.width / w, game.window.height / h)
       try:
         self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
-        game.music.volume = CUTSCENE_MUSIC_VOLUME if level != 7 else 0
       except:
         self.sound = None
+      if game.music:
+        game.music.volume = CUTSCENE_MUSIC_VOLUME if level != 7 else 0
     game.lastcutscenesound = self.sound
     self.primed = False
 
@@ -711,7 +712,8 @@ class Cutscene(object):
         game.objs.remove(self)
         game.level = self.level
         levels[min(last_level, self.level)].make()
-        game.music.volume = NORMAL_MUSIC_VOLUME
+        if game.music:
+          game.music.volume = NORMAL_MUSIC_VOLUME
       return
     if not game.keys[key.SPACE]:
       self.primed = True
@@ -948,14 +950,17 @@ class Game(object):
   def run(self):
     self.time = 0
     window = pyglet.window.Window(caption = 'Fragmented Space', width = 800, height = 600)
-    self.music = pyglet.media.Player()
-    music = pyglet.resource.media('sounds/music.ogg')
-    sg = pyglet.media.SourceGroup(music.audio_format, music.video_format)
-    sg.queue(music)
-    sg.loop = True
-    self.music.queue(sg)
-    self.music.play()
-    self.music.volume = NORMAL_MUSIC_VOLUME
+    try:
+      self.music = pyglet.media.Player()
+      music = pyglet.resource.media('sounds/music.ogg')
+      sg = pyglet.media.SourceGroup(music.audio_format, music.video_format)
+      sg.queue(music)
+      sg.loop = True
+      self.music.queue(sg)
+      self.music.play()
+      self.music.volume = NORMAL_MUSIC_VOLUME
+    except:
+      self.music = None
     self.window = window
     self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
