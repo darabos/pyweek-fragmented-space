@@ -651,6 +651,8 @@ class Cutscene(object):
   def __init__(self, level):
     self.t0 = game.time
     self.level = level
+    if hasattr(game, 'lastcutscenesound'):
+      game.lastcutscenesound.pause()
     if level > last_level + 1: # Plus epilogue.
       self.image = None
       self.sound = None
@@ -670,6 +672,7 @@ class Cutscene(object):
         self.sound = pyglet.resource.media('sounds/story{}.ogg'.format(level)).play()
       except:
         self.sound = None
+    game.lastcutscenesound = self.sound
     self.primed = False
 
   def draw(self):
