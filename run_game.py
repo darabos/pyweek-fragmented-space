@@ -56,8 +56,12 @@ class Player(object):
     self.movingup = sprite('player-up.png')
     self.movingdown = sprite('player-down.png')
     self.lifting = sprite('player-lifting.png')
-    self.hurting = sprite('player-lifting.png')
-    self.flyingsprite = sprite('player-lifting.png')
+    self.hurting = sprite('player-hurting.png')
+    self.flyingidling = sprite('player-flying.png')
+    self.flyingleft = sprite('player-flyleft.png')
+    self.flyingright = sprite('player-flyright.png')
+    self.flyingup = sprite('player-flyup.png')
+    self.flyingdown = sprite('player-flydown.png')
 
     self.sprite = self.idling
     self.i = i
@@ -135,18 +139,18 @@ class Player(object):
               game.playsound('flight')
               self.flying = False
         self.lastnospacetime = game.time
-        self.sprite = self.flyingsprite if self.flying else self.idling
+        self.sprite = self.flyingidling if self.flying else self.idling
         if game.keys[key.UP]:
-          self.sprite = self.movingup
+          self.sprite = self.flyingup if self.flying else self.movingup
           self.move(0, -1)
         elif game.keys[key.DOWN]:
-          self.sprite = self.movingdown
+          self.sprite = self.flyingdown if self.flying else self.movingdown
           self.move(0, 1)
         elif game.keys[key.LEFT]:
-          self.sprite = self.movingleft
+          self.sprite = self.flyingleft if self.flying else self.movingleft
           self.move(-1, 0)
         elif game.keys[key.RIGHT]:
-          self.sprite = self.movingright
+          self.sprite = self.flyingright if self.flying else self.movingright
           self.move(1, 0)
 
     p = self.phase / self.steptime
@@ -799,6 +803,7 @@ class MainMenu(object):
       s.color = 0, 0, 0
       s.opacity = random.randrange(128, 256)
       s.startx = random.randint(-150, 150)
+    self.icon = sprite('icon256.png')
     self.title = label('Fragmented Space', y = 150)
     self.subtitle = story('A game of my life on a platter', y = 90)
     self.load = label('Continue', x = -100, y = -100, anchor_x = 'left', font_size = 16)
@@ -820,12 +825,14 @@ class MainMenu(object):
     self.new.draw()
     if hasattr(self, 'newplus'):
       self.newplus.draw()
+      self.icon.draw()
     self.cursor.draw()
 
   def think(self, dt):
     p = game.time - self.t0
     def delay(i):
       return int(max(0, min(255, 50 * (p - i))))
+    self.icon.opacity = delay(0) / 5
     self.title.color = 0, 0, 0, delay(0)
     self.subtitle.color = 0, 0, 0, delay(1)
     self.load.color = 0, 0, 0, delay(1.5)
@@ -938,7 +945,7 @@ class Game(object):
     self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
-    window.set_icon(pyglet.resource.image('images/player-lifting.png'))
+    window.set_icon(pyglet.resource.image('images/icon256.png'))
     self.add(MainMenu())
     background = sprite('background.png')
     gl.glClearColor(247 / 255.0, 251 / 255.0, 1, 1)
