@@ -209,12 +209,7 @@ class Player(object):
         else:
           b.taken(self.stack[-1] if self.stack else self)
           self.stack.append(b)
-          game.playsound('win')
-          game.objs = [o for o in game.objs if not isinstance(o, Timer) and o is not game.tutorial]
-          for o in game.objs:
-            if isinstance(o, Note):
-              o.delete()
-          game.add(ScoreScreen())
+          game.scorescreen()
       elif len(self.stack) < 2 or game.files['Drive Space'].complete:
         b.taken(self.stack[-1] if self.stack else self)
         self.stack.append(b)
@@ -262,6 +257,8 @@ class Player(object):
     self.sprite.y = toY(self.j)
     self.phase = self.steptime * 2
     self.immunity = self.steptime * 4 + game.time
+    if game.mode == 'hard':
+      game.scorescreen('Killed by a virus.')
 
   def say(self, msg):
     game.add(Tip(msg, x = self.sprite.x, y = self.sprite.y + 20))
@@ -285,11 +282,18 @@ class Tip(object):
 
 
 class ScoreScreen(object):
-  def __init__(self):
+  def __init__(self, failreason):
     self.t0 = game.time
-    if game.time < game.ttl:
+    self.failreason = failreason
+    if failreason:
+      labels = [failreason, '', 'Press SPACE to retry.']
+      points = [0, 0, 0]
+    elif game.time < game.ttl:
+      level = str(game.level)
+      if game.mode == 'hard':
+        level += '+'
       labels = [
-        'LEVEL {} COMPLETE'.format(game.level),
+        'LEVEL {} COMPLETE'.format(level),
         '',
         'Time remaining:',
         'Longest free area:',
@@ -314,7 +318,7 @@ class ScoreScreen(object):
       points += [total, 0, 0]
     elif game.level == 1:
       labels = [
-        'LEVEL {} COMPLETE'.format(game.level),
+        'LEVEL 1{} COMPLETE'.format('+' if game.mode == 'hard' else ''),
         '',
         'Press SPACE to proceed',
         ]
@@ -358,7 +362,10 @@ class ScoreScreen(object):
       self.primed = True
     if self.primed and game.keys[key.SPACE]:
       game.objs = []
-      game.add(Cutscene(game.level + 1))
+      if self.failreason:
+        game.add(Cutscene(game.level))
+      else:
+        game.add(Cutscene(game.level + 1))
 
 
 class Corruption(object):
@@ -716,8 +723,6 @@ class Timer(object):
     self.beeps = min(game.ttl - game.time, 10)
 
   def draw(self):
-    if game.level == 1:
-      return # Hide timer on first level.
     for l in self.digits:
       l.draw()
     if game.time >= game.ttl:
@@ -725,6 +730,9 @@ class Timer(object):
     self.score.draw()
 
   def think(self, dt):
+    if game.level == 1:
+      game.objs.remove(self) # No timer on level 1.
+      return
     if game.time < game.ttl:
       text = ' ' * Timer.digits + '{:.1f}'.format(game.ttl - game.time)
       for c, l in zip(reversed(text), self.digits):
@@ -737,6 +745,8 @@ class Timer(object):
       self.digits[0].text = 'OUT OF TIME'
       for l in self.digits[1:]:
         l.text = ''
+      if game.mode == 'hard':
+        game.scorescreen('Ran out of time.')
     if game.keys[key.R]:
       levels[game.level].make()
 
@@ -766,7 +776,12 @@ class MainMenu(object):
     self.new = label('New game', x = -100, y = -160, anchor_x = 'left', font_size = 16)
     self.cursor = sprite('longest-0.png', x = -120)
     self.cursor.color = 0, 0, 0
-    self.selection = 'continue'
+    self.selection = 0
+    self.options = ['continue', 'new game']
+    if game.max_level > last_level:
+      self.options.append('new game+')
+      self.newplus = label('New game +', x = -100, y = -220, anchor_x = 'left', font_size = 16)
+    self.lastmove = 0 # Cursor move time.
     self.think(0)
 
   def draw(self):
@@ -774,6 +789,8 @@ class MainMenu(object):
     self.subtitle.draw()
     self.load.draw()
     self.new.draw()
+    if hasattr(self, 'newplus'):
+      self.newplus.draw()
     self.cursor.draw()
 
   def think(self, dt):
@@ -783,25 +800,36 @@ class MainMenu(object):
     self.title.color = 0, 0, 0, delay(0)
     self.subtitle.color = 0, 0, 0, delay(1)
     self.load.color = 0, 0, 0, delay(1.5)
+    self.cursor.opacity = delay(1.5)
     self.new.color = 0, 0, 0, delay(2)
+    if hasattr(self, 'newplus'):
+      self.newplus.color = 0, 0, 0, delay(2.5)
     p *= 0.3
     for s in self.sprites:
       s.y = int(400 - s.opacity * p)
       s.x = s.startx * p + 10 * math.sin(0.05 * s.y)
       s.rotation = -5 * math.sin(0.05 * s.y)
     if game.keys[key.SPACE] or game.keys[key.ENTER]:
-      if self.selection == 'continue':
-        game.load()
+      s = self.options[self.selection]
+      if s == 'continue':
+        pass
+      elif s == 'new game':
+        game.points = 0
+        game.level = first_level
+        game.mode = 'normal'
+      elif s == 'new game+':
+        game.points = 0
+        game.level = first_level
+        game.mode = 'hard'
       game.objs = []
       game.add(Cutscene(game.level))
-    elif game.keys[key.UP]:
-      self.selection = 'continue'
-    elif game.keys[key.DOWN]:
-      self.selection = 'new game'
-    if self.selection == 'continue':
-      self.cursor.y = -100
-    elif self.selection == 'new game':
-      self.cursor.y = -160
+    elif game.keys[key.UP] and self.lastmove + 0.2 < game.time:
+      self.selection = max(0, self.selection - 1)
+      self.lastmove = game.time
+    elif game.keys[key.DOWN] and self.lastmove + 0.2 < game.time:
+      self.selection = min(len(self.options) - 1, self.selection + 1)
+      self.lastmove = game.time
+    self.cursor.y = -100 - 60 * self.selection
 
 
 class Game(object):
@@ -809,6 +837,9 @@ class Game(object):
     self.objs = []
     self.points = 0
     self.level = first_level
+    self.mode = 'normal'
+    self.max_level = 0
+    self.load()
     soundnames = 'pickup drop hurt flight corruption reveal win complete uncomplete bounce fail repair beep squish push'.split()
     for f in self.allfiles():
       for i in range(10):
@@ -832,10 +863,12 @@ class Game(object):
         j = json.load(f)
         self.points = j['points']
         self.level = j['level']
+        self.mode = j['mode']
+        self.max_level = j['max_level']
 
   def save(self):
     with file('save', 'wb') as f:
-      j = { 'points': self.points, 'level': self.level }
+      j = { 'points': self.points, 'level': self.level, 'mode': self.mode, 'max_level': max(self.level, self.max_level) }
       json.dump(j, f)
 
   def playsound(self, sound):
@@ -921,6 +954,7 @@ class Game(object):
     self.save()
     self.level_number = level_number
     self.ttl = self.time + time_limit
+    self.over = False
     self.objs = []
     self.tutorial = self.add(tutorial.Tutorial(self, level_number))
     self.add(Timer())
@@ -988,7 +1022,10 @@ class Game(object):
           longest = span
           start = last + 1
         last = p
-    needed = (100 - len(blocks)) * 3 / 4
+    if self.mode == 'hard':
+      needed = 100 - len(blocks)
+    else:
+      needed = (100 - len(blocks)) * 3 / 4
     self.tutorial.setlongest(longest)
     if longest >= needed and not self.vibrant:
       p = start + longest / 2
@@ -1022,6 +1059,16 @@ class Game(object):
     # So we need to reference these sprites exclusively from objs.
     # That's why it's a little awkward to access them.
     [o for o in self.objs if isinstance(o, Holder) and o.name == 'marks'][0].sprites = marks
+
+  def scorescreen(self, failreason = ''):
+    if not failreason:
+      self.playsound('win')
+    game.objs = [o for o in game.objs if not isinstance(o, Timer) and o is not game.tutorial]
+    for o in game.objs:
+      if isinstance(o, Note):
+        o.delete()
+    self.over = True
+    self.add(ScoreScreen(failreason))
 
 if __name__ == '__main__':
   game = Game()

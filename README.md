@@ -66,6 +66,10 @@ well.
 If there are no more cutscenes between levels, you have beaten the game and
 are now in infinite play mode. Press ESC to quit the game.
 
+If you decide to restart the game at this point, you will find a new item in
+the main menu: "New game +". This mode will put up much more of a challenge!
+(It's also accessible by setting "max_level" to 100 in the save file.)
+
 
 
 LICENSE
