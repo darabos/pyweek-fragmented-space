@@ -651,6 +651,13 @@ class Cutscene(object):
       self.image = None
       self.sound = None
     else:
+      thank_you = '\n\n'.join([
+        'Thank you for playing! You can play on to increase your score or restart the game with New game + for a challenge.',
+        'Design, programming, music, sounds, voices, and story by Alexander Malmberg and Daniel Darabos.',
+        'Uses Python, Pyglet, and the Cardo and Montserrat fonts under their respective licenses. Created for PyWeek #20.',
+        ])
+      text = levels[level].subtitle if level <= last_level else thank_you
+      self.subtitle = story(text, x = -360, y = 260, width = 720, multiline = True, anchor_x = 'left', anchor_y = 'top', color = (255, 255, 255, 255))
       self.image = sprite('story/{}.jpg'.format(level))
       w = float(self.image.width)
       h = float(self.image.height)
@@ -670,10 +677,25 @@ class Cutscene(object):
       else:
         p = 1
       p *= p
-      self.image.opacity = 255 * p
+      opacity = int(255 * p)
+      self.image.opacity = opacity
       self.image.scale = self.ratio * (2 - p)
       self.image.rotation = 10 * (1 - p)
       self.image.draw()
+      for border in [1, 2]:
+        self.subtitle.color = 0, 0, 0, opacity
+        self.subtitle.x += border
+        self.subtitle.draw()
+        self.subtitle.x -= 2 * border
+        self.subtitle.draw()
+        self.subtitle.x += border
+        self.subtitle.y += border
+        self.subtitle.draw()
+        self.subtitle.y -= 2 * border
+        self.subtitle.draw()
+        self.subtitle.y += border
+      self.subtitle.color = 255, 255, 255, 255
+      self.subtitle.draw()
 
   def think(self, dt):
     if hasattr(self, 'ttl'):
@@ -689,13 +711,14 @@ class Cutscene(object):
 
 
 class Level(object):
-  def __init__(self, level_number, files, max_length, corruption, viruses, time_limit, **kwargs):
+  def __init__(self, level_number, files, max_length, corruption, viruses, time_limit, subtitle, **kwargs):
     self.level_number = level_number
     self.files = files
     self.max_length = max_length
     self.corruption = corruption
     self.viruses = viruses
     self.time_limit = time_limit
+    self.subtitle = subtitle
     self.kwargs = kwargs
 
   def make(self):
@@ -703,12 +726,18 @@ class Level(object):
 
 
 levels = {
-  1: Level(1, 1, 4, 0, 0, 0, non_random_lengths=True, only_center=True),
-  2: Level(2, 3, 6, 0, 0, 100, only_center=True),
-  3: Level(3, 4, 8, 4, 0, 100, only_center=True),
-  4: Level(4, 5, 10, 4, 1, 100),
-  5: Level(5, 6, 10, 6, 2, 200),
-  6: Level(6, 7, 10, 10, 4, 300),
+  1: Level(1, 1, 4, 0, 0, 0, non_random_lengths=True, only_center=True,
+    subtitle="I'm in the car, Bob. I'll be with you in 5 minutes and we can make the deal. Yeah, yeah, I'll defragment my drive on the way."),
+  2: Level(2, 3, 6, 0, 0, 100, only_center=True,
+    subtitle="The deal was a setup! He's dead! Bob's dead! I'll get those CIA thugs for this! Just let me defragment first..."),
+  3: Level(3, 4, 8, 4, 0, 100, only_center=True,
+    subtitle="Haha! Yes! I got every last one of those CIA thugs! Found a hard drive too. I know! I'll defragment it!"),
+  4: Level(4, 5, 10, 4, 1, 100,
+    subtitle="Bob wouldn't believe how deep this goes... I'm in the alien mothership now. I'll try to connect to their storage system to defragment it."),
+  5: Level(5, 6, 10, 6, 2, 200,
+    subtitle="And now I'm stranded on Mars. Just great. How will I ever get home? I guess there's plenty of time to defragment the ship's computer."),
+  6: Level(6, 7, 10, 10, 4, 300,
+    subtitle="Ah, nothing like a swim in the sea and a well deserved beer! I needed this before facing the AI. Oh, I got to remember to defragment the drive too!"),
 }
 first_level = min(levels.keys())
 last_level = max(levels.keys())
