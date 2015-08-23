@@ -659,7 +659,7 @@ class Cutscene(object):
     else:
       thank_you = '\n\n'.join([
         'Thank you for playing! You can play on to increase your score or restart the game with New game + for a challenge.',
-        'Design, programming, music, sounds, voices, and story by Alexander Malmberg and Daniel Darabos.',
+        'Design, art, programming, music, sounds, voices, and story by Alexander Malmberg and Daniel Darabos.',
         'Uses Python, Pyglet, and the Cardo and Montserrat fonts under their respective licenses. Created for PyWeek #20.',
         ])
       text = levels[level].subtitle if level <= last_level else thank_you
