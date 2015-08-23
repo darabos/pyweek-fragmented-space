@@ -789,8 +789,6 @@ class Timer(object):
         l.text = ''
       if game.mode == 'hard':
         game.scorescreen('Ran out of time.')
-    if game.keys[key.R]:
-      levels[game.level].make()
 
 
 class Holder(object):
@@ -994,6 +992,8 @@ class Game(object):
       self.time += dt
       for o in self.objs[:]:
         o.think(dt)
+      if self.keys[key.R]:
+        levels[self.level].make()
     pyglet.clock.schedule_interval(update, 1.0 / 70)
     window.push_handlers(self.keys)
     pyglet.app.run()
