@@ -265,10 +265,10 @@ class Player(object):
       game.scorescreen('Killed by a virus.')
 
   def say(self, msg):
-    game.add(Tip(msg, x = self.sprite.x, y = self.sprite.y + 20))
+    game.add(Speech(msg, x = self.sprite.x, y = self.sprite.y + 20))
 
 
-class Tip(object):
+class Speech(object):
   def __init__(self, msg, ttl = 2, **kwargs):
     kwargs.setdefault('font_size', 10)
     self.label = label(msg, **kwargs)
@@ -281,7 +281,7 @@ class Tip(object):
 
   def think(self, dt):
     self.label.y = int(self.y0 + 300 * (game.time - self.t0) ** 4)
-    if self.t0 + self.ttl < game.time:
+    if self.t0 + self.ttl < game.time and self in game.objs:
       game.objs.remove(self)
 
 
