@@ -965,7 +965,10 @@ class Game(object):
     self.layers = collections.defaultdict(pyglet.graphics.Batch)
     self.keys = key.KeyStateHandler()
     self.fullscreen = False
-    window.set_icon(pyglet.resource.image('images/icon256.png'))
+    try:
+      window.set_icon(pyglet.resource.image('images/icon256.png'))
+    except:
+      pass # Doesn't work on Windows for some reason.
     self.add(MainMenu())
     background = sprite('background.png')
     gl.glClearColor(247 / 255.0, 251 / 255.0, 1, 1)
