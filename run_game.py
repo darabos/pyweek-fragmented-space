@@ -752,8 +752,8 @@ levels = {
 }
 first_level = min(levels.keys())
 last_level = max(levels.keys())
-NORMAL_MUSIC_VOLUME = 0.2
-CUTSCENE_MUSIC_VOLUME = 0.1
+NORMAL_MUSIC_VOLUME = 0.1
+CUTSCENE_MUSIC_VOLUME = 0.05
 
 
 class Timer(object):
